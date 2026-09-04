@@ -1,0 +1,12 @@
+node_modules/
+.serena/
+.expo/
+dist/
+*.log
+android/.gradle/
+android/build/
+android/app/build/
+ios/Pods/
+ios/build/
+ios/*.xcworkspace/
+ios/Podfile.lock

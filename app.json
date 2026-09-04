@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Motor Care",
+    "slug": "motorcycle-care",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "motorcare",
+    "plugins": [
+      "expo-router",
+      "expo-notifications",
+      "expo-calendar",
+      "expo-font"
+    ],
+    "android": {
+      "package": "com.motorcare.app",
+      "permissions": ["POST_NOTIFICATIONS", "READ_CALENDAR", "WRITE_CALENDAR"]
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.motorcare.app"
+    }
+  }
+}
