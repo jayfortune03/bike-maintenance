@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { Button, Card, Text } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 import { Screen } from '@/src/components/Screen';
 import { OdometerDialog } from '@/src/components/OdometerDialog';
 import { MaintenanceCard } from '@/src/components/MaintenanceCard';
@@ -11,7 +12,7 @@ export default function MotorcycleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const motorcycle = useAppStore((state) => state.motorcycles.find((item) => item.id === id));
-  const rules = useAppStore((state) => state.maintenanceRules.filter((rule) => rule.motorcycleId === id && rule.enabled));
+  const rules = useAppStore(useShallow((state) => state.maintenanceRules.filter((rule) => rule.motorcycleId === id && rule.enabled)));
   const setActive = useAppStore((state) => state.setActiveMotorcycle);
   const updateOdometer = useAppStore((state) => state.updateOdometer);
   const deleteMotorcycle = useAppStore((state) => state.deleteMotorcycle);

@@ -2,6 +2,7 @@ import { MD3DarkTheme, MD3LightTheme, type MD3Theme } from 'react-native-paper';
 import type { ThemeMode } from '@/src/domain/types';
 
 export const BLUE = '#2563EB';
+export const ORANGE = '#EA580C';
 
 function readableAccent(color: string): string {
   const normalized = color.replace('#', '');
@@ -13,5 +14,19 @@ function readableAccent(color: string): string {
 export function getAppTheme(mode: ThemeMode, systemIsDark: boolean, accent = BLUE): MD3Theme {
   const isDark = mode === 'dark' || (mode === 'system' && systemIsDark);
   const base = isDark ? MD3DarkTheme : MD3LightTheme;
-  return { ...base, colors: { ...base.colors, primary: readableAccent(accent), secondary: readableAccent(accent), background: isDark ? '#111827' : '#F8FAFC', surface: isDark ? '#1F2937' : '#FFFFFF', surfaceVariant: isDark ? '#374151' : '#EEF2F7' } };
+  return {
+    ...base,
+    roundness: 18,
+    colors: {
+      ...base.colors,
+      primary: readableAccent(accent),
+      secondary: readableAccent(accent),
+      tertiary: ORANGE,
+      onTertiary: '#FFFFFF',
+      background: isDark ? '#0B1220' : '#F5F7FB',
+      surface: isDark ? '#121C2E' : '#FFFFFF',
+      surfaceVariant: isDark ? '#1D2A3D' : '#EEF2F7',
+      outlineVariant: isDark ? '#334155' : '#E2E8F0',
+    },
+  };
 }
