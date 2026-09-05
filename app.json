@@ -10,11 +10,16 @@
       "expo-router",
       "expo-notifications",
       "expo-calendar",
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
     "android": {
       "package": "com.motorcare.app",
-      "permissions": ["POST_NOTIFICATIONS", "READ_CALENDAR", "WRITE_CALENDAR"]
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR"
+      ]
     },
     "experiments": {
       "typedRoutes": true

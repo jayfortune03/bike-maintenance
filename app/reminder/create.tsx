@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Alert, StyleSheet } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { Button, SegmentedButtons, Switch, Text, TextInput } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/src/components/Screen';
 import { useAppStore } from '@/src/store/app.store';
 import { createReminderWithIntegrations } from '@/src/services/reminder-coordinator';
 import type { ReminderRepeat } from '@/src/domain/types';
+import { DateTimeField, formatLocalDateTime } from '@/src/components/DateTimeField';
 
 export default function CreateReminderScreen() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function CreateReminderScreen() {
   const addReminder = useAppStore((state) => state.addReminder);
   const [title, setTitle] = useState(rule?.title ?? '');
   const [description, setDescription] = useState('');
-  const [scheduledAt, setScheduledAt] = useState(new Date(Date.now() + 86400000).toISOString().slice(0, 16));
+  const [scheduledAt, setScheduledAt] = useState(formatLocalDateTime(new Date(Date.now() + 86400000)));
   const [repeat, setRepeat] = useState<ReminderRepeat>('none');
   const [notification, setNotification] = useState(true);
   const [calendar, setCalendar] = useState(false);
@@ -28,7 +29,7 @@ export default function CreateReminderScreen() {
     if (result.warning) Alert.alert('Pengingat tersimpan', result.warning);
     router.back();
   };
-  return <Screen><Button icon="arrow-left" onPress={() => router.back()} style={styles.back}>Pengingat</Button><Text variant="headlineMedium" style={styles.title}>Buat pengingat</Text><Text variant="bodyMedium" style={styles.copy}>Simpan pengingat di perangkat Anda.</Text><TextInput label="Judul" mode="outlined" value={title} onChangeText={setTitle} placeholder="Contoh: Cek tekanan ban" style={styles.input} /><TextInput label="Tanggal dan waktu" mode="outlined" value={scheduledAt} onChangeText={setScheduledAt} placeholder="2026-09-05T09:00" style={styles.input} /><Text variant="labelLarge" style={styles.label}>Ulangi</Text><SegmentedButtons value={repeat} onValueChange={(value) => setRepeat(value as ReminderRepeat)} buttons={[{ value: 'none', label: 'Tidak' }, { value: 'daily', label: 'Harian' }, { value: 'weekly', label: 'Mingguan' }, { value: 'monthly', label: 'Bulanan' }]} /><TextInput label="Catatan (opsional)" mode="outlined" value={description} onChangeText={setDescription} multiline style={styles.input} /><SettingRow label="Notifikasi lokal" value={notification} onChange={setNotification} /><SettingRow label="Tambahkan ke kalender" value={calendar} onChange={setCalendar} /><Button mode="contained" onPress={save} style={styles.save}>Simpan pengingat</Button></Screen>;
+  return <Screen><Button icon="arrow-left" onPress={() => router.back()} style={styles.back}>Pengingat</Button><Text variant="headlineMedium" style={styles.title}>Buat pengingat</Text><Text variant="bodyMedium" style={styles.copy}>Simpan pengingat di perangkat Anda.</Text><TextInput label="Judul" mode="outlined" value={title} onChangeText={setTitle} placeholder="Contoh: Cek tekanan ban" style={styles.input} /><View style={styles.input}><DateTimeField label="Tanggal dan waktu" value={scheduledAt} onChange={setScheduledAt} /></View><Text variant="labelLarge" style={styles.label}>Ulangi</Text><SegmentedButtons value={repeat} onValueChange={(value) => setRepeat(value as ReminderRepeat)} buttons={[{ value: 'none', label: 'Tidak' }, { value: 'daily', label: 'Harian' }, { value: 'weekly', label: 'Mingguan' }, { value: 'monthly', label: 'Bulanan' }]} /><TextInput label="Catatan (opsional)" mode="outlined" value={description} onChangeText={setDescription} multiline style={styles.input} /><SettingRow label="Notifikasi lokal" value={notification} onChange={setNotification} /><SettingRow label="Tambahkan ke kalender" value={calendar} onChange={setCalendar} /><Button mode="contained" onPress={save} style={styles.save}>Simpan pengingat</Button></Screen>;
 }
 
 function SettingRow({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) { return <Button contentStyle={styles.setting} onPress={() => onChange(!value)}>{label}<Switch value={value} onValueChange={onChange} /></Button>; }

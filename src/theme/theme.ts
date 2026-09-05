@@ -3,6 +3,7 @@ import type { ThemeMode } from '@/src/domain/types';
 
 export const BLUE = '#2563EB';
 export const ORANGE = '#EA580C';
+export const CARD_SHADOW = { elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } } as const;
 
 function readableAccent(color: string): string {
   const normalized = color.replace('#', '');

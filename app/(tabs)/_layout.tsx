@@ -9,6 +9,7 @@ export default function TabsLayout() {
   return (
     <Tabs screenOptions={({ route }) => ({
       headerShown: false,
+      animation: 'fade',
       tabBarActiveTintColor: theme.colors.primary,
       tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
       tabBarStyle: { height: 78, paddingTop: 8, paddingBottom: 8, backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outlineVariant },
