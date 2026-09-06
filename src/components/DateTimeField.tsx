@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { Text, TextInput, useTheme } from 'react-native-paper';
+import { Button, Text, useTheme } from 'react-native-paper';
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
@@ -11,28 +11,96 @@ export function formatLocalDateTime(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function parseDate(value: string): Date {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? new Date() : date;
-}
-
-function formatDisplayDate(value: string): string {
-  return parseDate(value).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-export function DateTimeField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+export function DateTimeField({ label, value, onChange, disabled = false, error = false }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  error?: boolean;
+}) {
   const theme = useTheme();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [open, setOpen] = useState(false);
-  const date = parseDate(value);
+  const [mode, setMode] = useState<'date' | 'time' | 'datetime' | null>(null);
+  const parsed = new Date(value);
+  const date = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
   const updateFromNative = (event: DateTimePickerEvent, nextDate?: Date) => {
-    if (Platform.OS === 'android') setOpen(false);
-    if (event.type !== 'dismissed' && nextDate) onChange(formatLocalDateTime(nextDate));
+    if (Platform.OS === 'android') setMode(null);
+    if (event.type === 'set' && nextDate) onChange(formatLocalDateTime(nextDate));
   };
 
-  if (Platform.OS === 'web') return <View style={styles.webField}><TextInput label={label} mode="outlined" value={formatDisplayDate(value)} editable={false} right={<TextInput.Icon icon="calendar-clock-outline" />} /><input ref={inputRef} aria-label={label} type="datetime-local" value={value} onChange={(event) => onChange(event.currentTarget.value)} style={styles.webPicker} /></View>;
-
-  return <><Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => setOpen(true)}><TextInput label={label} mode="outlined" value={formatDisplayDate(value)} editable={false} onPressIn={() => setOpen(true)} right={<TextInput.Icon icon="calendar-clock-outline" onPress={() => setOpen(true)} />} /></Pressable>{open ? <DateTimePicker value={date} mode="datetime" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={updateFromNative} /> : null}</>;
+  return (
+    <View style={styles.field}>
+      <Text variant="labelLarge" style={{ color: error ? theme.colors.error : theme.colors.onSurfaceVariant }}>
+        {label}
+      </Text>
+      {Platform.OS === 'web' ? (
+        <input
+          aria-label={label}
+          aria-invalid={error}
+          type="datetime-local"
+          value={value}
+          disabled={disabled}
+          onChange={(event) => onChange(event.currentTarget.value)}
+          style={{
+            boxSizing: 'border-box', width: '100%', minWidth: 0, minHeight: 56,
+            padding: 16, borderRadius: 12,
+            fontFamily: theme.fonts.bodyLarge.fontFamily,
+            fontSize: theme.fonts.bodyLarge.fontSize,
+            fontWeight: theme.fonts.bodyLarge.fontWeight,
+            letterSpacing: theme.fonts.bodyLarge.letterSpacing,
+            border: `1px solid ${error ? theme.colors.error : theme.colors.outline}`,
+            backgroundColor: theme.colors.surface, color: theme.colors.onSurface,
+            colorScheme: theme.dark ? 'dark' : 'light',
+          }}
+        />
+      ) : (
+        <>
+          <View style={styles.controls}>
+            <Button
+              mode="outlined"
+              icon="calendar-outline"
+              disabled={disabled}
+              style={styles.option}
+              contentStyle={styles.button}
+              onPress={() => setMode(Platform.OS === 'ios' ? 'datetime' : 'date')}
+              accessibilityLabel={`Pilih tanggal: ${date.toLocaleDateString('id-ID')}`}
+            >
+              {date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </Button>
+            <Button
+              mode="outlined"
+              icon="clock-outline"
+              disabled={disabled}
+              style={styles.option}
+              contentStyle={styles.button}
+              onPress={() => setMode(Platform.OS === 'ios' ? 'datetime' : 'time')}
+              accessibilityLabel={`Pilih waktu: ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`}
+            >
+              {date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+            </Button>
+          </View>
+          {mode && !disabled ? (
+            <View>
+              <DateTimePicker
+                value={date}
+                mode={mode}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={updateFromNative}
+                themeVariant={theme.dark ? 'dark' : 'light'}
+              />
+              {Platform.OS === 'ios' ? (
+                <Button onPress={() => setMode(null)} contentStyle={styles.button}>Selesai memilih</Button>
+              ) : null}
+            </View>
+          ) : null}
+        </>
+      )}
+    </View>
+  );
 }
 
-const styles = StyleSheet.create({ webField: { position: 'relative' }, webPicker: { position: 'absolute', left: 0, top: 0, width: '100%', height: 56, opacity: 0, zIndex: 2 } });
+const styles = StyleSheet.create({
+  field: { gap: 8 },
+  controls: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  option: { flexGrow: 1, flexBasis: 160, borderRadius: 12 },
+  button: { minHeight: 48 },
+});

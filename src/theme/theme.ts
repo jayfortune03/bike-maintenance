@@ -1,33 +1,37 @@
 import { MD3DarkTheme, MD3LightTheme, type MD3Theme } from 'react-native-paper';
 import type { ThemeMode } from '@/src/domain/types';
+import { accentColors } from './accent';
 
 export const BLUE = '#2563EB';
 export const ORANGE = '#EA580C';
-export const CARD_SHADOW = { elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } } as const;
-
-function readableAccent(color: string): string {
-  const normalized = color.replace('#', '');
-  if (normalized.length !== 6) return BLUE;
-  const [r, g, b] = [0, 2, 4].map((index) => Number.parseInt(normalized.slice(index, index + 2), 16));
-  return (r * 299 + g * 587 + b * 114) / 1000 > 155 ? '#1D4ED8' : color;
-}
+export const CARD_SHADOW = { elevation: 2, boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.10)' } as const;
 
 export function getAppTheme(mode: ThemeMode, systemIsDark: boolean, accent = BLUE): MD3Theme {
   const isDark = mode === 'dark' || (mode === 'system' && systemIsDark);
   const base = isDark ? MD3DarkTheme : MD3LightTheme;
+  const palette = accentColors(accent, isDark);
   return {
     ...base,
-    roundness: 18,
+    roundness: 12,
     colors: {
       ...base.colors,
-      primary: readableAccent(accent),
-      secondary: readableAccent(accent),
-      tertiary: ORANGE,
-      onTertiary: '#FFFFFF',
-      background: isDark ? '#0B1220' : '#F5F7FB',
-      surface: isDark ? '#121C2E' : '#FFFFFF',
-      surfaceVariant: isDark ? '#1D2A3D' : '#EEF2F7',
-      outlineVariant: isDark ? '#334155' : '#E2E8F0',
+      ...palette,
+      secondary: palette.primary,
+      onSecondary: palette.onPrimary,
+      secondaryContainer: palette.primaryContainer,
+      onSecondaryContainer: palette.onPrimaryContainer,
+      tertiary: isDark ? '#FDBA74' : '#9A3412',
+      onTertiary: isDark ? '#431407' : '#FFFFFF',
+      background: isDark ? '#0D131D' : '#F4F6F9',
+      surface: isDark ? '#18212E' : '#FFFFFF',
+      onSurface: isDark ? '#F1F5F9' : '#172033',
+      onBackground: isDark ? '#F1F5F9' : '#172033',
+      surfaceVariant: isDark ? '#253142' : '#E9EEF5',
+      onSurfaceVariant: isDark ? '#BAC5D4' : '#526077',
+      outline: isDark ? '#6F8096' : '#758399',
+      outlineVariant: isDark ? '#2C3A4D' : '#DFE5ED',
+      backdrop: 'rgba(4, 9, 18, 0.52)',
+      elevation: { level0: 'transparent', level1: isDark ? '#18212E' : '#FFFFFF', level2: isDark ? '#202B3A' : '#F8FAFC', level3: isDark ? '#253142' : '#F1F5F9', level4: isDark ? '#29364A' : '#EBF0F6', level5: isDark ? '#304057' : '#E5ECF4' },
     },
   };
 }

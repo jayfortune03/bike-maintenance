@@ -7,8 +7,8 @@ import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated'
 export function Screen({ children, scroll = true }: PropsWithChildren<{ scroll?: boolean }>) {
   const theme = useTheme();
   const reducedMotion = useReducedMotion();
-  const content = scroll ? <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">{children}</ScrollView> : children;
+  const content = scroll ? <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">{children}</ScrollView> : children;
   return <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.colors.background }]}><Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(30).duration(260)} style={styles.contentWrap}>{content}</Animated.View></SafeAreaView>;
 }
 
-const styles = StyleSheet.create({ screen: { flex: 1 }, contentWrap: { flex: 1 }, content: { padding: 20, paddingBottom: 48 } });
+const styles = StyleSheet.create({ screen: { flex: 1 }, contentWrap: { flex: 1 }, content: { padding: 20, paddingTop: 24, paddingBottom: 48, width: '100%', maxWidth: 640, alignSelf: 'center' } });

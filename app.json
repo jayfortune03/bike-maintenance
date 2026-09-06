@@ -18,7 +18,9 @@
       "permissions": [
         "POST_NOTIFICATIONS",
         "READ_CALENDAR",
-        "WRITE_CALENDAR"
+        "WRITE_CALENDAR",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ]
     },
     "experiments": {
@@ -26,6 +28,13 @@
     },
     "ios": {
       "bundleIdentifier": "com.motorcare.app"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "99ecf4c9-2bfd-458f-803e-4496af56481e"
+      }
+    },
+    "owner": "jayfortune03"
   }
 }

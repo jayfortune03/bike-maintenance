@@ -68,7 +68,7 @@ Stack berikut mengikuti spesifikasi teknis pada `PRD.md`.
 | State | Zustand | Runtime state dan UI state |
 | Persistensi state | Zustand Persist | Persistensi state melalui storage adapter |
 | Storage | `react-native-mmkv` | Penyimpanan lokal native yang cepat dan sinkron |
-| Form | React Hook Form + Zod | Standar pengelolaan dan validasi form sesuai PRD |
+| Form | React state + validasi lokal | Implementasi saat ini; React Hook Form + Zod di PRD belum digunakan |
 | Tanggal | Day.js | Manipulasi dan perhitungan tanggal |
 | Notifikasi | Expo Notifications | Scheduled local notification |
 | Kalender | Expo Calendar | Integrasi event kalender perangkat |
@@ -114,28 +114,91 @@ bun install
 
 ## Menjalankan Android
 
-Jalankan prebuild pertama kali atau setelah konfigurasi native berubah:
+Proyek `android/` dan `ios/` sudah ada dan dilacak Git. Jangan menjalankan `expo prebuild --clean` untuk build biasa karena dapat menimpa perubahan native. Jika config plugin berubah, jalankan prebuild secara sengaja dan tinjau diff native-nya.
+
+Pilih JDK 17 dan jalankan development build pada emulator/perangkat:
 
 ```sh
-bunx expo prebuild
-```
-
-Lalu jalankan aplikasi:
-
-```sh
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 bun run android
 ```
 
-`react-native-mmkv`, Expo Notifications, dan Expo Calendar membutuhkan **Expo Development Build**. Fitur tersebut tidak ditujukan untuk Expo Go.
+Command `JAVA_HOME` di atas khusus macOS. Di OS lain arahkan `JAVA_HOME` ke instalasi JDK 17. `react-native-mmkv` dan Expo Calendar memerlukan build native milik aplikasi; Expo Go tidak cukup untuk menjalankan seluruh fitur proyek ini.
 
 ## Menjalankan iOS
 
-Project ini Android-first dan tidak memiliki optimasi iOS khusus di MVP, tetapi dapat dijalankan untuk pengecekan dasar:
+Memerlukan macOS, Xcode lengkap (bukan hanya Command Line Tools), CocoaPods, dan simulator/perangkat. Setelah dependency native terpasang:
 
 ```sh
-bunx expo prebuild
 bun run ios
 ```
+
+Untuk simulator pertama kali, buka Xcode dan pasang runtime iOS. Untuk perangkat fisik, atur signing/team Apple di workspace `ios/MotorCare.xcworkspace` setelah CocoaPods selesai.
+
+## Build APK dan iOS via EAS Cloud
+
+`eas.json` menyediakan tiga profil: `preview` untuk pengujian internal, `simulator` untuk iOS Simulator, dan `production` untuk distribusi store. Proyek belum ditautkan otomatis ke akun Expo Anda; tidak ada project ID atau credential yang dikarang di konfigurasi.
+
+Login dan tautkan sekali:
+
+```sh
+bunx eas-cli@latest login
+bunx eas-cli@latest init
+```
+
+Build APK Android yang bisa dipasang tanpa Metro:
+
+```sh\
+bunx eas-cli@latest build --platform android --profile preview
+```
+
+Unduh APK dari link hasil build. Pasang di Android dengan izin instalasi aplikasi dari sumber tersebut, atau `adb install -r /path/to/app.apk`. EAS akan meminta konfigurasi signing/keystore; simpan credential dengan aman, jangan commit.
+
+Build iOS untuk perangkat fisik terdaftar:
+
+```sh
+bunx eas-cli@latest device:create
+bunx eas-cli@latest build --platform ios --profile preview
+```
+
+Distribusi internal iOS memerlukan akun Apple Developer berbayar dan perangkat yang didaftarkan dalam provisioning profile. IPA tidak dapat dipasang bebas ke semua iPhone seperti APK Android.
+
+Build untuk TestFlight/App Store dan Play Store:
+
+```sh
+bunx eas-cli@latest build --platform ios --profile production
+bunx eas-cli@latest build --platform android --profile production
+```
+
+Android production menghasilkan **AAB**, bukan APK. Build iOS production dapat dikirim ke App Store Connect/TestFlight melalui EAS Submit setelah konfigurasi akun Apple. Build tidak otomatis mempublikasikan aplikasi. Pastikan identifier `com.motorcare.app` tersedia pada akun/store Anda; bila perlu diubah, sinkronkan juga project native, bukan hanya `app.json`.
+
+Build iOS Simulator tanpa signing perangkat:
+
+```sh
+bunx eas-cli@latest build --platform ios --profile simulator
+```
+
+**Build iOS melalui EAS cloud tidak membutuhkan Mac lokal.** Menjalankan hasil simulator atau membangun iOS secara lokal tetap membutuhkan Mac dan Xcode. Build cloud membutuhkan akun Expo, internet, serta kuota/biaya sesuai paket EAS. Command di atas belum dijalankan untuk akun Anda.
+
+## Build APK Lokal
+
+Dengan JDK 17, Android SDK/NDK yang diminta Gradle, dan lisensi Android yang disetujui:
+
+```sh
+JAVA_HOME=$(/usr/libexec/java_home -v 17) ./android/gradlew -p android assembleRelease
+```
+
+Hasil: `android/app/build/outputs/apk/release/app-release.apk`. Konfigurasi Gradle saat ini masih memakai **debug keystore untuk release lokal**: cocok untuk pengujian pribadi, bukan publikasi Play Store. Untuk distribusi production gunakan signing yang benar; EAS dapat mengelola credential build cloud. File APK/AAB tidak dihasilkan oleh `expo export`.
+
+## Perilaku Reminder
+
+- Notifikasi harian/mingguan/bulanan/tahunan mengikuti komponen tanggal dan jam lokal perangkat, bukan timer 24 jam sejak menekan Simpan. Android dapat menunda pengiriman akibat kebijakan baterai/OS; aplikasi ini bukan alarm presisi.
+- Trigger native berulang tidak menyediakan tanggal mulai tertunda. Jika kecocokan berikutnya terjadi sebelum tanggal yang dipilih, aplikasi menolak integrasi notifikasinya dengan penjelasan, menyimpan pengingat lokal, dan tidak mengirim terlalu awal. Gunakan waktu mulai terdekat, reminder satu kali, atau kalender untuk mulai jauh di masa depan.
+- Notifikasi bulanan mendukung tanggal 1-28. Notifikasi tahunan tidak memakai 29 Februari. Notifikasi custom belum didukung. Kalender mendukung pengulangan sesuai tanggal awal; interval custom tersimpan diartikan dalam hari.
+- Kalender menggunakan zona waktu perangkat dan hanya memilih kalender yang dapat ditulis. Perubahan/penghapusan seri berlaku juga untuk kejadian berikutnya.
+- Izin ditolak atau integrasi gagal ditampilkan sebagai peringatan. ID resource yang masih ada dipertahankan untuk percobaan ulang; penghapusan motor/reset dibatalkan jika resource terkait belum dapat dibersihkan.
+- Menyelesaikan perawatan berbasis hari menjadwalkan ulang reminder satu kali yang terkait dan belum selesai. Reminder berulang mempertahankan jadwalnya; tanggal servis berbasis kilometer tidak ditebak.
+- Mengetuk notifikasi membuka konteks yang masih tersimpan dan memilih motor terkait. Notifikasi untuk reminder yang sudah dihapus diabaikan.
 
 ## Preview di Web
 
@@ -168,13 +231,13 @@ bun run typecheck
 Unit test:
 
 ```sh
-bun test
+bun run test
 ```
 
-Build check untuk web:
+Pemeriksaan bundle web, Android, dan iOS (bukan build APK/IPA):
 
 ```sh
-bunx expo export --platform web
+bunx expo export --platform all
 ```
 
 ## Struktur Project

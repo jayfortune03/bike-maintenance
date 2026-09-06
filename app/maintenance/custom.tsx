@@ -1,18 +1,91 @@
 import { useState } from 'react';
-import { StyleSheet } from 'react-native';
-import { Button, Text, TextInput } from 'react-native-paper';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Button, HelperText, Text, TextInput, useTheme } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/src/components/Screen';
 import { useAppStore } from '@/src/store/app.store';
+import { CARD_SHADOW } from '@/src/theme/theme';
 
 export default function CustomMaintenanceScreen() {
   const router = useRouter();
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const motorcycleId = useAppStore((state) => state.activeMotorcycleId);
   const addCustomRule = useAppStore((state) => state.addCustomRule);
   const [title, setTitle] = useState('');
   const [km, setKm] = useState('');
   const [days, setDays] = useState('');
-  return <Screen><Button icon="arrow-left" onPress={() => router.back()} style={styles.back}>Perawatan</Button><Text variant="headlineMedium" style={styles.title}>Tambah jadwal custom</Text><Text variant="bodyMedium" style={styles.copy}>Buat pengingat sesuai kebutuhan motor Anda.</Text><TextInput label="Nama perawatan" mode="outlined" value={title} onChangeText={setTitle} placeholder="Contoh: Lumasi rantai" style={styles.input} /><TextInput label="Interval jarak (opsional)" mode="outlined" value={km} onChangeText={setKm} keyboardType="number-pad" right={<TextInput.Affix text="km" />} style={styles.input} /><TextInput label="Interval waktu (opsional)" mode="outlined" value={days} onChangeText={setDays} keyboardType="number-pad" right={<TextInput.Affix text="hari" />} style={styles.input} /><Button mode="contained" onPress={() => { if (!motorcycleId || !title.trim() || (!km && !days)) return; addCustomRule({ motorcycleId, title: title.trim(), intervalKm: km ? Number(km) : undefined, intervalDays: days ? Number(days) : undefined }); router.back(); }} style={styles.save}>Simpan jadwal</Button></Screen>;
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const invalidKm = !!km && (!Number.isSafeInteger(Number(km)) || Number(km) <= 0);
+  const invalidDays = !!days && (!Number.isSafeInteger(Number(days)) || Number(days) <= 0);
+  const missingInterval = !km && !days;
+  const sectionStyle = [styles.fields, CARD_SHADOW, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }];
+
+  const save = () => {
+    setSubmitted(true);
+    if (!motorcycleId || !title.trim() || missingInterval || invalidKm || invalidDays) return;
+    try {
+      addCustomRule({
+        motorcycleId,
+        title: title.trim(),
+        intervalKm: km ? Number(km) : undefined,
+        intervalDays: days ? Number(days) : undefined,
+      });
+      router.back();
+    } catch {
+      setError('Jadwal belum tersimpan. Coba lagi.');
+    }
+  };
+
+  return (
+    <Screen scroll={false}>
+      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, {
+          paddingBottom: Math.max(insets.bottom, 24),
+          paddingLeft: Math.max(insets.left, 20),
+          paddingRight: Math.max(insets.right, 20),
+        }]}>
+          <Button icon="arrow-left" onPress={() => router.back()} style={styles.back} contentStyle={styles.button}>Perawatan</Button>
+          <View style={styles.heading}>
+            <Text variant="headlineSmall" accessibilityRole="header" style={styles.title}>Tambah jadwal custom</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Buat jadwal perawatan sesuai kebutuhan motor Anda.</Text>
+          </View>
+          <View style={sectionStyle}>
+            <TextInput label="Nama perawatan" accessibilityLabel="Nama perawatan" mode="outlined" value={title} onChangeText={setTitle} placeholder="Contoh: Lumasi rantai" error={submitted && !title.trim()} />
+            {submitted && !title.trim() ? <HelperText type="error">Nama perawatan wajib diisi.</HelperText> : null}
+          </View>
+          <View style={sectionStyle}>
+            <View style={styles.heading}>
+              <Text variant="titleMedium">Interval perawatan</Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Isi jarak, waktu, atau keduanya. Jadwal mengikuti batas yang tercapai lebih dulu.</Text>
+            </View>
+            <View>
+              <TextInput label="Interval jarak (opsional)" accessibilityLabel="Interval jarak (opsional)" mode="outlined" value={km} onChangeText={setKm} keyboardType="number-pad" right={<TextInput.Affix text="km" />} error={submitted && invalidKm} />
+              {submitted && invalidKm ? <HelperText type="error">Masukkan jarak berupa angka bulat lebih dari 0.</HelperText> : null}
+            </View>
+            <View>
+              <TextInput label="Interval waktu (opsional)" accessibilityLabel="Interval waktu (opsional)" mode="outlined" value={days} onChangeText={setDays} keyboardType="number-pad" right={<TextInput.Affix text="hari" />} error={submitted && invalidDays} />
+              {submitted && invalidDays ? <HelperText type="error">Masukkan jumlah hari berupa angka bulat lebih dari 0.</HelperText> : null}
+            </View>
+            {submitted && missingInterval ? <HelperText type="error">Isi minimal satu interval: jarak atau waktu.</HelperText> : null}
+          </View>
+          {!motorcycleId ? <HelperText type="error">Pilih motor terlebih dahulu sebelum membuat jadwal.</HelperText> : null}
+          {error ? <HelperText type="error" accessibilityLiveRegion="polite">{error}</HelperText> : null}
+          <Button mode="contained" onPress={save} disabled={!motorcycleId} contentStyle={styles.button}>Simpan jadwal</Button>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Screen>
+  );
 }
 
-const styles = StyleSheet.create({ back: { alignSelf: 'flex-start', marginLeft: -8 }, title: { fontWeight: '700', marginTop: 24 }, copy: { marginTop: 8, opacity: 0.7 }, input: { marginTop: 18 }, save: { marginTop: 28 } });
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  content: { padding: 20, gap: 24, width: '100%', maxWidth: 640, alignSelf: 'center' },
+  back: { alignSelf: 'flex-start', marginLeft: -8 },
+  heading: { gap: 8 },
+  title: { fontWeight: '700' },
+  fields: { gap: 16, padding: 20, borderRadius: 20, borderWidth: 1 },
+  button: { minHeight: 48 },
+});

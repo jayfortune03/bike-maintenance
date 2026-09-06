@@ -94,6 +94,7 @@ export interface Reminder {
   calendarEnabled: boolean;
   calendarEventId?: string;
   calendarId?: string;
+  integrationWarning?: string;
   completed: boolean;
   createdAt: string;
   updatedAt: string;

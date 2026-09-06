@@ -1,16 +1,27 @@
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Button, SegmentedButtons, Text, TextInput, useTheme } from 'react-native-paper';
+import { useRef, useState } from 'react';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Button, HelperText, ProgressBar, RadioButton, Text, TextInput, useTheme } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/src/components/Screen';
 import { useAppStore } from '@/src/store/app.store';
 import type { MotorcycleType } from '@/src/domain/types';
+import { CARD_SHADOW } from '@/src/theme/theme';
 
-const colors = [{ name: 'Biru', value: '#2563EB' }, { name: 'Merah', value: '#DC2626' }, { name: 'Hitam', value: '#334155' }, { name: 'Putih', value: '#CBD5E1' }, { name: 'Hijau', value: '#16A34A' }, { name: 'Kuning', value: '#CA8A04' }];
+const colors = [
+  { name: 'Biru', value: '#2563EB' },
+  { name: 'Merah', value: '#DC2626' },
+  { name: 'Hitam', value: '#334155' },
+  { name: 'Putih', value: '#CBD5E1' },
+  { name: 'Hijau', value: '#16A34A' },
+  { name: 'Kuning', value: '#CA8A04' },
+];
 
 export default function AddMotorcycleScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
   const addMotorcycle = useAppStore((state) => state.addMotorcycle);
   const [step, setStep] = useState(1);
   const [brand, setBrand] = useState('');
@@ -21,18 +32,171 @@ export default function AddMotorcycleScreen() {
   const [type, setType] = useState<MotorcycleType>('scooter');
   const [odometer, setOdometer] = useState('0');
   const [color, setColor] = useState(colors[0]);
-  const suggestedNickname = nickname || model;
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const suggestedNickname = nickname.trim() || model.trim();
+  const invalidYear = !!year && !/^\d{4}$/.test(year.trim());
+  const invalidOdometer = !odometer.trim() || !Number.isSafeInteger(Number(odometer)) || Number(odometer) < 0;
+  const sectionStyle = [styles.fields, CARD_SHADOW, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }];
+
+  const moveToStep = (value: number) => {
+    Keyboard.dismiss();
+    setSubmitted(false);
+    setError('');
+    setStep(value);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  };
   const next = () => {
+    setSubmitted(true);
     if (step === 1 && (!brand.trim() || !model.trim())) return;
-    if (step === 2 && !suggestedNickname.trim()) return;
-    if (step < 4) setStep(step + 1);
-    else {
-      const id = addMotorcycle({ nickname: suggestedNickname.trim(), brand: brand.trim(), model: model.trim(), variant: variant.trim() || undefined, year: year ? Number(year) : undefined, type, currentOdometer: Math.max(0, Number(odometer) || 0), themeColor: color.value, colorName: color.name });
+    if (step === 2 && (!suggestedNickname || invalidYear)) return;
+    if (step === 3 && invalidOdometer) return;
+    if (step < 4) {
+      moveToStep(step + 1);
+      return;
+    }
+    try {
+      const id = addMotorcycle({
+        nickname: suggestedNickname,
+        brand: brand.trim(),
+        model: model.trim(),
+        variant: variant.trim() || undefined,
+        year: year ? Number(year) : undefined,
+        type,
+        currentOdometer: Number(odometer),
+        themeColor: color.value,
+        colorName: color.name,
+      });
       useAppStore.getState().setActiveMotorcycle(id);
       router.replace('/');
+    } catch {
+      setError('Motor belum tersimpan. Coba lagi.');
     }
   };
-  return <Screen><View style={styles.header}><Button icon="arrow-left" onPress={() => step === 1 ? router.back() : setStep(step - 1)} accessibilityLabel="Kembali">{step === 1 ? 'Batal' : 'Kembali'}</Button><Text variant="labelLarge">{step} dari 4</Text></View>{step === 1 ? <><Text variant="headlineMedium" style={styles.title}>Motor apa yang Anda kendarai?</Text><Text variant="bodyMedium" style={styles.copy}>Mulai dari identitas motor Anda.</Text><TextInput label="Merek" mode="outlined" value={brand} onChangeText={setBrand} placeholder="Contoh: Yamaha" style={styles.input} /><TextInput label="Model" mode="outlined" value={model} onChangeText={setModel} placeholder="Contoh: NMAX" style={styles.input} /><TextInput label="Varian (opsional)" mode="outlined" value={variant} onChangeText={setVariant} style={styles.input} /></> : step === 2 ? <><Text variant="headlineMedium" style={styles.title}>Ceritakan sedikit lagi</Text><Text variant="bodyMedium" style={styles.copy}>Informasi ini membantu membuat jadwal yang relevan.</Text><TextInput label="Nama panggilan" mode="outlined" value={nickname} onChangeText={setNickname} placeholder={model || 'Nama motor'} style={styles.input} /><TextInput label="Tahun (opsional)" mode="outlined" value={year} onChangeText={setYear} keyboardType="number-pad" style={styles.input} /><Text variant="labelLarge" style={styles.label}>Jenis motor</Text><SegmentedButtons value={type} onValueChange={(value) => setType(value as MotorcycleType)} buttons={[{ value: 'scooter', label: 'Skuter' }, { value: 'cub', label: 'Bebek' }, { value: 'manual', label: 'Manual' }]} /></> : step === 3 ? <><Text variant="headlineMedium" style={styles.title}>Berapa kilometer saat ini?</Text><Text variant="bodyMedium" style={styles.copy}>Anda bisa memperbaruinya kapan saja.</Text><TextInput label="Odometer saat ini" mode="outlined" value={odometer} onChangeText={setOdometer} keyboardType="number-pad" right={<TextInput.Affix text="km" />} style={styles.odometerInput} /></> : <><Text variant="headlineMedium" style={styles.title}>Pilih warna motor</Text><Text variant="bodyMedium" style={styles.copy}>Warna ini menjadi aksen tampilan aplikasi.</Text><View style={styles.swatches}>{colors.map((item) => <Button key={item.value} mode={color.value === item.value ? 'contained' : 'outlined'} onPress={() => setColor(item)} style={styles.swatch} buttonColor={color.value === item.value ? item.value : undefined} textColor={color.value === item.value ? '#FFF' : theme.colors.onSurface}>{item.name}</Button>)}</View><View style={[styles.preview, { backgroundColor: theme.colors.primaryContainer }]}><View style={[styles.previewIcon, { backgroundColor: color.value }]}><Text style={styles.previewText}>{(model || 'MO').slice(0, 2).toUpperCase()}</Text></View><View><Text variant="titleMedium">{suggestedNickname || 'Motor Anda'}</Text><Text variant="bodySmall">{brand || 'Merek'} {model || 'Model'}</Text></View></View></>}<Button mode="contained" onPress={next} style={styles.next}>{step === 4 ? 'Simpan motor' : 'Lanjut'}</Button></Screen>;
+
+  return (
+    <Screen scroll={false}>
+      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, {
+          paddingBottom: Math.max(insets.bottom, 24),
+          paddingLeft: Math.max(insets.left, 20),
+          paddingRight: Math.max(insets.right, 20),
+        }]}>
+          <View style={styles.progress}>
+            <View style={styles.header}>
+              <Button icon="arrow-left" onPress={() => step === 1 ? router.back() : moveToStep(step - 1)} style={styles.back} contentStyle={styles.button}>
+                {step === 1 ? 'Batal' : 'Kembali'}
+              </Button>
+              <Text variant="labelLarge" accessibilityLiveRegion="polite">Langkah {step} dari 4</Text>
+            </View>
+            <ProgressBar progress={step / 4} accessibilityLabel={`Langkah ${step} dari 4`} />
+          </View>
+          {step === 1 ? (
+            <>
+              <View style={styles.heading}>
+                <Text variant="headlineSmall" accessibilityRole="header" style={styles.title}>Motor apa yang Anda kendarai?</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Mulai dari identitas motor Anda.</Text>
+              </View>
+              <View style={sectionStyle}>
+                <View>
+                  <TextInput label="Merek" accessibilityLabel="Merek" mode="outlined" value={brand} onChangeText={setBrand} placeholder="Contoh: Yamaha" error={submitted && !brand.trim()} />
+                  {submitted && !brand.trim() ? <HelperText type="error">Merek wajib diisi.</HelperText> : null}
+                </View>
+                <View>
+                  <TextInput label="Model" accessibilityLabel="Model" mode="outlined" value={model} onChangeText={setModel} placeholder="Contoh: NMAX" error={submitted && !model.trim()} />
+                  {submitted && !model.trim() ? <HelperText type="error">Model wajib diisi.</HelperText> : null}
+                </View>
+                <TextInput label="Varian (opsional)" accessibilityLabel="Varian (opsional)" mode="outlined" value={variant} onChangeText={setVariant} />
+              </View>
+            </>
+          ) : step === 2 ? (
+            <>
+              <View style={styles.heading}>
+                <Text variant="headlineSmall" accessibilityRole="header" style={styles.title}>Ceritakan sedikit lagi</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Informasi ini membantu membuat jadwal yang relevan.</Text>
+              </View>
+              <View style={sectionStyle}>
+                <View>
+                  <TextInput label="Nama panggilan (opsional)" accessibilityLabel="Nama panggilan (opsional)" mode="outlined" value={nickname} onChangeText={setNickname} placeholder={model || 'Nama motor'} />
+                  <HelperText type="info">Jika kosong, nama model digunakan.</HelperText>
+                </View>
+                <View>
+                  <TextInput label="Tahun (opsional)" accessibilityLabel="Tahun (opsional)" mode="outlined" value={year} onChangeText={setYear} keyboardType="number-pad" maxLength={4} error={submitted && invalidYear} />
+                  {submitted && invalidYear ? <HelperText type="error">Masukkan tahun dengan 4 digit.</HelperText> : null}
+                </View>
+              </View>
+              <View style={sectionStyle}>
+                <Text variant="titleMedium">Jenis motor</Text>
+                <RadioButton.Group value={type} onValueChange={(value) => setType(value as MotorcycleType)}>
+                  <RadioButton.Item label="Skuter" value="scooter" />
+                  <RadioButton.Item label="Bebek" value="cub" />
+                  <RadioButton.Item label="Manual" value="manual" />
+                </RadioButton.Group>
+              </View>
+            </>
+          ) : step === 3 ? (
+            <>
+              <View style={styles.heading}>
+                <Text variant="headlineSmall" accessibilityRole="header" style={styles.title}>Berapa kilometer saat ini?</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Lihat angka odometer di panel motor, bukan trip meter. Anda bisa memperbaruinya kapan saja.</Text>
+              </View>
+              <View style={sectionStyle}>
+                <TextInput label="Odometer saat ini" accessibilityLabel="Odometer saat ini" mode="outlined" value={odometer} onChangeText={setOdometer} keyboardType="number-pad" right={<TextInput.Affix text="km" />} error={submitted && invalidOdometer} />
+                {submitted && invalidOdometer ? <HelperText type="error">Masukkan kilometer berupa angka bulat, minimal 0.</HelperText> : null}
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.heading}>
+                <Text variant="headlineSmall" accessibilityRole="header" style={styles.title}>Pilih warna motor</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Warna ini membantu Anda mengenali motor di garage.</Text>
+              </View>
+              <View style={[sectionStyle, styles.swatches]}>
+                {colors.map((item) => (
+                  <Button
+                    key={item.value}
+                    mode={color.value === item.value ? 'contained' : 'outlined'}
+                    icon={color.value === item.value ? 'check' : undefined}
+                    accessibilityState={{ selected: color.value === item.value }}
+                    onPress={() => setColor(item)}
+                    style={styles.swatch}
+                    contentStyle={styles.button}
+                    buttonColor={color.value === item.value ? item.value : undefined}
+                    textColor={color.value === item.value ? (item.name === 'Putih' || item.name === 'Kuning' ? '#0F172A' : '#FFFFFF') : theme.colors.onSurface}
+                  >
+                    {item.name}
+                  </Button>
+                ))}
+              </View>
+              <View style={sectionStyle}>
+                <Text variant="titleMedium">Ringkasan motor</Text>
+                <Text variant="headlineSmall" style={styles.title}>{suggestedNickname}</Text>
+                <Text variant="bodyLarge">{brand} {model}{variant ? ` ${variant}` : ''}</Text>
+                <Text variant="bodyMedium">
+                  {type === 'scooter' ? 'Skuter' : type === 'cub' ? 'Bebek' : 'Manual'}{year ? ` / ${year}` : ''} / {color.name}
+                </Text>
+                <Text variant="bodyLarge">{Number(odometer).toLocaleString('id-ID')} km</Text>
+              </View>
+            </>
+          )}
+          {error ? <HelperText type="error" accessibilityLiveRegion="polite">{error}</HelperText> : null}
+          <Button mode="contained" onPress={next} contentStyle={styles.button}>{step === 4 ? 'Simpan motor' : 'Lanjut'}</Button>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Screen>
+  );
 }
 
-const styles = StyleSheet.create({ header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { marginTop: 28, fontWeight: '700' }, copy: { marginTop: 10, opacity: 0.7, lineHeight: 22 }, input: { marginTop: 18 }, label: { marginTop: 24, marginBottom: 10 }, odometerInput: { marginTop: 28, height: 68 }, swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 24 }, swatch: { minWidth: 92 }, preview: { flexDirection: 'row', alignItems: 'center', borderRadius: 18, padding: 16, marginTop: 28 }, previewIcon: { width: 52, height: 52, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginRight: 14 }, previewText: { color: '#FFF', fontWeight: '700' }, next: { marginTop: 32 } });
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  content: { padding: 20, gap: 24, width: '100%', maxWidth: 640, alignSelf: 'center' },
+  progress: { gap: 16 },
+  header: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16 },
+  back: { marginLeft: -8 },
+  heading: { gap: 8 },
+  title: { fontWeight: '700' },
+  fields: { gap: 16, padding: 20, borderRadius: 20, borderWidth: 1 },
+  swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  swatch: { flexGrow: 1, flexBasis: '40%' },
+  button: { minHeight: 48 },
+});

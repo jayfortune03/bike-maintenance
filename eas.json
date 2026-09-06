@@ -1,0 +1,22 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "ios": { "scheme": "MotorCare" }
+    },
+    "simulator": {
+      "extends": "preview",
+      "ios": { "simulator": true, "scheme": "MotorCare" }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": { "buildType": "app-bundle" },
+      "ios": { "scheme": "MotorCare" }
+    }
+  }
+}
