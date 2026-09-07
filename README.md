@@ -137,13 +137,13 @@ Untuk simulator pertama kali, buka Xcode dan pasang runtime iOS. Untuk perangkat
 
 ## Build APK dan iOS via EAS Cloud
 
-`eas.json` menyediakan tiga profil: `preview` untuk pengujian internal, `simulator` untuk iOS Simulator, dan `production` untuk distribusi store. Proyek belum ditautkan otomatis ke akun Expo Anda; tidak ada project ID atau credential yang dikarang di konfigurasi.
+`eas.json` menyediakan tiga profil: `preview` untuk pengujian internal, `simulator` untuk iOS Simulator, dan `production` untuk distribusi store. Konfigurasi saat ini sudah memiliki `extra.eas.projectId` dan owner Expo. Gunakan akun yang memiliki akses ke proyek tersebut.
 
-Login dan tautkan sekali:
+Login dan periksa proyek yang terhubung:
 
 ```sh
 bunx eas-cli@latest login
-bunx eas-cli@latest init
+bunx eas-cli@latest project:info
 ```
 
 Build APK Android yang bisa dipasang tanpa Metro:
@@ -189,6 +189,20 @@ JAVA_HOME=$(/usr/libexec/java_home -v 17) ./android/gradlew -p android assembleR
 ```
 
 Hasil: `android/app/build/outputs/apk/release/app-release.apk`. Konfigurasi Gradle saat ini masih memakai **debug keystore untuk release lokal**: cocok untuk pengujian pribadi, bukan publikasi Play Store. Untuk distribusi production gunakan signing yang benar; EAS dapat mengelola credential build cloud. File APK/AAB tidak dihasilkan oleh `expo export`.
+
+## Ikon dan Splash Screen
+
+Aset ada di `assets/branding/`, dengan preview desain di `assets/branding/preview.html`:
+
+- `mark.svg`: master vector motor dan tanda centang, dibuat khusus untuk Motor Care.
+- `icon.png`: ikon 1024 x 1024 dengan latar biru, tanpa alpha untuk App Store.
+- `adaptive-foreground.png` dan `adaptive-monochrome.png`: lapisan Android adaptive/themed icon, dengan padding untuk masker launcher.
+- `splash-light.png` dan `splash-dark.png`: logo transparan untuk splash terang/gelap.
+- `favicon.png`: ikon browser.
+
+Konfigurasi Expo memakai `expo-splash-screen`. Aset launcher/splash juga sudah dipasang langsung ke project native yang dilacak Git: Android mencakup density mdpi-xxxhdpi dan iOS memakai image set 1x/2x/3x. Splash mengikuti tema sistem saat cold start, bukan warna motor yang baru tersedia setelah data aplikasi dimuat. Tidak ada timer loading buatan.
+
+**Ikon dan splash memerlukan build native baru lalu instal ulang/update aplikasi.** Hot reload, preview web, dan Expo Go tidak menunjukkan hasil launcher/splash native final. Android 12+ dapat menentukan sendiri masker dan ukuran ikon splash. Untuk perubahan dependency iOS, CocoaPods harus diperbarui saat build berikutnya.
 
 ## Perilaku Reminder
 

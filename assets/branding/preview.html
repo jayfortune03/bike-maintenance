@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motor Care / App Identity</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #edf1f6; color: #172033; font-family: system-ui, sans-serif; }
+    main { max-width: 1120px; margin: auto; padding: 48px 24px; }
+    header { margin-bottom: 32px; }
+    .eyebrow { font-size: 12px; letter-spacing: .16em; font-weight: 700; color: #526077; }
+    h1 { font-size: clamp(28px, 4vw, 42px); letter-spacing: -.04em; margin: 8px 0; }
+    p { color: #526077; line-height: 1.6; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+    article { min-width: 0; }
+    h2 { font-size: 15px; margin: 0 0 16px; }
+    .phone { height: 520px; border: 1px solid #d8e0ec; border-radius: 32px; display: grid; place-items: center; background: #F4F6F9; box-shadow: 0 16px 40px #17203312; }
+    .phone img { width: 200px; height: 200px; }
+    .dark { background: #0D131D; border-color: #2c3a4d; }
+    .icons { background: white; border: 1px solid #d8e0ec; padding: 28px; border-radius: 24px; }
+    .large-icon { width: 100%; border-radius: 22%; }
+    .samples { display: flex; align-items: end; gap: 16px; margin-top: 24px; }
+    .samples img { width: 56px; height: 56px; border-radius: 14px; }
+    .samples .round { border-radius: 50%; }
+    .samples .small { width: 32px; height: 32px; border-radius: 8px; }
+    .note { font-size: 12px; margin-top: 16px; }
+    @media(max-width: 800px) { .grid { grid-template-columns: 1fr; max-width: 380px; margin: auto; } main { padding-top: 24px; } .large-icon { max-width: 200px; } }
+  </style>
+</head>
+<body><main>
+  <header><div class="eyebrow">ANDROID + iOS / LAUNCH IDENTITY</div><h1>Motor Care</h1><p>Motor terawat, perjalanan lebih tenang.</p></header>
+  <section class="grid">
+    <article><h2>Ikon aplikasi</h2><div class="icons"><img class="large-icon" src="icon.png" alt="Ikon Motor Care: motor putih dengan tanda centang mint di latar biru"><div class="samples"><img class="round" src="icon.png" alt="Masker bulat Android"><img src="icon.png" alt="Masker rounded iOS"><img class="small" src="icon.png" alt="Ikon ukuran kecil"></div><p class="note">Biru utama / #2563EB<br>Android adaptive + monochrome<br>iOS 1024 px, tanpa alpha</p></div></article>
+    <article><h2>Splash / Light</h2><div class="phone"><img src="splash-light.png" alt="Logo biru dan hijau pada latar terang"></div><p class="note">Latar #F4F6F9. Logo di tengah.</p></article>
+    <article><h2>Splash / Dark</h2><div class="phone dark"><img src="splash-dark.png" alt="Logo putih dan mint pada latar gelap"></div><p class="note">Latar #0D131D. Mengikuti tema sistem.</p></article>
+  </section>
+  <p class="note">Preview komposisi, bukan tangkapan layar perangkat. Masker ikon dan ukuran splash Android 12+ mengikuti sistem operasi.</p>
+</main></body>
+</html>

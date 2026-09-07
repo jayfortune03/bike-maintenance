@@ -50,7 +50,7 @@ describe('native reminder scheduling', () => {
       if (repeat === 'weekly') expect(request.trigger).toMatchObject({ weekday: new Date(at).getDay() + 1 });
       if (repeat === 'yearly') expect(request.trigger).toMatchObject({ month: 0, day: 1 });
     }
-    expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledBefore(Notifications.getPermissionsAsync);
+    expect(vi.mocked(Notifications.setNotificationChannelAsync)).toHaveBeenCalledBefore(vi.mocked(Notifications.getPermissionsAsync));
   });
   it('never schedules recurring notifications before the requested start', async () => {
     await expect(scheduleReminder({ ...reminder, repeat: 'daily', scheduledAt: new Date(2030, 0, 5, 9).toISOString() })).rejects.toThrow('jadwal terdekat');

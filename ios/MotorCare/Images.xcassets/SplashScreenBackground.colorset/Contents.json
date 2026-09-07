@@ -1,20 +1,14 @@
 {
   "colors": [
     {
-      "color": {
-        "components": {
-          "alpha": "1.000",
-          "blue": "1.00000000000000",
-          "green": "1.00000000000000",
-          "red": "1.00000000000000"
-        },
-        "color-space": "srgb"
-      },
-      "idiom": "universal"
+      "idiom": "universal",
+      "color": { "color-space": "srgb", "components": { "red": "0.9568627451", "green": "0.9647058824", "blue": "0.9764705882", "alpha": "1.000" } }
+    },
+    {
+      "idiom": "universal",
+      "appearances": [{ "appearance": "luminosity", "value": "dark" }],
+      "color": { "color-space": "srgb", "components": { "red": "0.0509803922", "green": "0.0745098039", "blue": "0.1137254902", "alpha": "1.000" } }
     }
   ],
-  "info": {
-    "version": 1,
-    "author": "expo"
-  }
+  "info": { "version": 1, "author": "expo" }
 }

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Motor Care</title>
+  <defs>
+    <mask id="check-cutout">
+      <rect width="1024" height="1024" fill="white"/>
+      <path d="m665 324 22 22 38-43" fill="none" stroke="black" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <g fill="none" stroke="#FFFFFF" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="336" cy="630" r="84"/>
+    <circle cx="698" cy="630" r="84"/>
+    <path d="m698 630-88-222h-54"/>
+    <path d="M336 630 425 490h130l62 105H488"/>
+    <path d="M316 479h109"/>
+  </g>
+  <path d="M426 463c17-46 51-69 95-69 32 0 58 19 76 52l14 34H426Z" fill="#FFFFFF"/>
+  <path d="M442 517h111l-23 62h-63Z" fill="#FFFFFF"/>
+  <circle cx="336" cy="630" r="18" fill="#FFFFFF"/>
+  <circle cx="698" cy="630" r="18" fill="#FFFFFF"/>
+  <circle cx="696" cy="324" r="65" fill="#A7F3D0" mask="url(#check-cutout)"/>
+</svg>
