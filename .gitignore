@@ -22,3 +22,6 @@ android/app/release.keystore
 
 expo-env.d.ts
 # @end expo-cli
+
+.omo
+.playwright-mcp

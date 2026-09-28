@@ -11,8 +11,8 @@ import { MotorcycleSelector } from '@/src/components/MotorcycleSelector';
 import { MotorcyclePickerModal } from '@/src/components/MotorcyclePickerModal';
 import { OdometerDialog } from '@/src/components/OdometerDialog';
 import { MaintenanceCard } from '@/src/components/MaintenanceCard';
+import { buildMaintenanceCardModel } from '@/src/components/maintenance-card-model';
 import { selectActiveMotorcycle, useAppStore } from '@/src/store/app.store';
-import { calculateMaintenanceStatus } from '@/src/domain/maintenance-calculator';
 import { CARD_SHADOW } from '@/src/theme/theme';
 
 export default function HomeScreen() {
@@ -27,7 +27,14 @@ export default function HomeScreen() {
   const updateOdometer = useAppStore((state) => state.updateOdometer);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [odometerVisible, setOdometerVisible] = useState(false);
-  const attention = rules.filter((rule) => calculateMaintenanceStatus({ currentOdometer: motorcycle?.currentOdometer ?? 0, currentDate: new Date().toISOString(), intervalKm: rule.intervalKm, intervalDays: rule.intervalDays, lastCompletedKm: rule.lastCompletedKm, lastCompletedAt: rule.lastCompletedAt }).status !== 'good');
+  const currentDate = new Date().toISOString();
+  const attention = rules.filter((rule) => {
+    const model = buildMaintenanceCardModel(rule, motorcycle?.currentOdometer ?? 0, currentDate);
+    return model.tracking === 'tracked' && model.status !== 'good';
+  });
+  const untrackedCount = rules.filter((rule) => buildMaintenanceCardModel(rule, motorcycle?.currentOdometer ?? 0, currentDate).tracking === 'untracked').length;
+  const oilRule = rules.find((rule) => rule.type === 'engine-oil');
+  const otherAttention = attention.filter((rule) => rule.type !== 'engine-oil');
   const surface = [styles.surface, CARD_SHADOW, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }];
   const muted = { color: theme.colors.onSurfaceVariant };
 
@@ -43,6 +50,10 @@ export default function HomeScreen() {
         <View style={[styles.headerIcon, { backgroundColor: theme.colors.primaryContainer }]}><MaterialCommunityIcons name="view-dashboard-outline" size={24} color={theme.colors.onPrimaryContainer} /></View>
       </View>
       <MotorcycleSelector motorcycle={motorcycle} onPress={() => setPickerVisible(true)} />
+      {oilRule ? <><SectionTitle>Oli mesin</SectionTitle>
+        <MaintenanceCard rule={oilRule} currentOdometer={motorcycle.currentOdometer} onPress={() => router.push(`/maintenance/${oilRule.id}`)} />
+        <View style={styles.oilActions}><Button icon="oil" mode="contained" onPress={() => router.push(`/maintenance/${oilRule.id}?action=log`)} contentStyle={styles.button} style={styles.oilPrimary}>Catat ganti oli</Button><Button icon="tune-variant" mode="outlined" onPress={() => router.push(`/maintenance/edit?id=${oilRule.id}`)} contentStyle={styles.button} style={styles.oilSecondary}>Atur interval</Button></View>
+      </> : null}
       <View style={[surface, styles.hero]}>
         <View style={styles.heroTop}><Text variant="labelMedium" style={[muted, styles.eyebrow]}>ODOMETER SAAT INI</Text><MaterialCommunityIcons name="speedometer" size={24} color={theme.colors.primary} /></View>
         <View style={styles.reading}><Text variant="displaySmall" style={styles.odometer}>{motorcycle.currentOdometer.toLocaleString('id-ID')}</Text><Text variant="titleMedium" style={muted}>km</Text></View>
@@ -52,9 +63,12 @@ export default function HomeScreen() {
       <View style={styles.stats}>
         {[{ value: rules.length, label: 'Jadwal aktif' }, { value: attention.length, label: 'Perlu dicek' }, { value: logs.length, label: 'Aktivitas' }].map((item) => <View key={item.label} style={[surface, styles.stat]}><Text variant="headlineSmall" style={styles.title}>{item.value}</Text><Text variant="bodySmall" style={muted}>{item.label}</Text></View>)}
       </View>
-      {!attention.length ? <View style={[surface, styles.goodCard]}>
+      {!attention.length && !untrackedCount ? <View style={[surface, styles.goodCard]}>
         <View style={[styles.goodIcon, { backgroundColor: theme.dark ? '#16342C' : '#ECFDF3' }]}><MaterialCommunityIcons name="check-circle-outline" size={24} color={theme.dark ? '#86EFAC' : '#166534'} /></View>
         <View style={styles.copy}><Text variant="titleSmall" style={styles.title}>Semua terlihat baik</Text><Text variant="bodyMedium" style={[muted, styles.subtitle]}>Belum ada perawatan yang mendesak.</Text></View>
+      </View> : !attention.length && untrackedCount ? <View style={[surface, styles.goodCard]}>
+        <View style={[styles.goodIcon, { backgroundColor: theme.colors.surfaceVariant }]}><MaterialCommunityIcons name="clipboard-text-clock-outline" size={24} color={theme.colors.onSurfaceVariant} /></View>
+        <View style={styles.copy}><Text variant="titleSmall" style={styles.title}>Lengkapi riwayat perawatan</Text><Text variant="bodyMedium" style={[muted, styles.subtitle]}>{untrackedCount} jadwal belum memiliki catatan awal.</Text></View>
       </View> : null}
       <SectionTitle>Aksi cepat</SectionTitle>
       <View style={styles.actions}>
@@ -64,7 +78,7 @@ export default function HomeScreen() {
           { label: 'Perawatan', icon: 'wrench-outline' as const, action: () => router.push('/(tabs)/maintenance') },
         ].map((item) => <Pressable key={item.label} accessibilityRole="button" accessibilityLabel={item.label} onPress={item.action} style={({ pressed }) => [surface, styles.action, { opacity: pressed ? 0.7 : 1 }]}><View style={[styles.actionIcon, { backgroundColor: theme.colors.primaryContainer }]}><MaterialCommunityIcons name={item.icon} size={23} color={theme.colors.onPrimaryContainer} /></View><Text variant="labelLarge" style={styles.actionLabel}>{item.label}</Text></Pressable>)}
       </View>
-      {attention.length ? <><SectionTitle>Perlu perhatian</SectionTitle>{attention.slice(0, 3).map((rule) => <MaintenanceCard key={rule.id} rule={rule} currentOdometer={motorcycle.currentOdometer} onPress={() => router.push(`/maintenance/${rule.id}`)} />)}<Button onPress={() => router.push('/(tabs)/maintenance')} contentStyle={styles.button}>Lihat semua perawatan</Button></> : null}
+      {otherAttention.length ? <><SectionTitle>Perlu perhatian</SectionTitle>{otherAttention.slice(0, 3).map((rule) => <MaintenanceCard key={rule.id} rule={rule} currentOdometer={motorcycle.currentOdometer} onPress={() => router.push(`/maintenance/${rule.id}`)} />)}<Button onPress={() => router.push('/(tabs)/maintenance')} contentStyle={styles.button}>Lihat semua perawatan</Button></> : null}
       <SectionTitle>Aktivitas terakhir</SectionTitle>
       <View style={surface}>
         {logs.length ? logs.slice(-3).reverse().map((log, index) => <View key={log.id} style={[styles.log, index > 0 && { borderTopWidth: 1, borderTopColor: theme.colors.outlineVariant }]}>
@@ -83,6 +97,7 @@ const styles = StyleSheet.create({
   headerIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, minWidth: 0 }, title: { fontWeight: '700' }, subtitle: { marginTop: 4, lineHeight: 21 },
   surface: { borderWidth: 1, borderRadius: 20, padding: 16 },
+  oilActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, oilPrimary: { flexGrow: 1 }, oilSecondary: { flexGrow: 1 },
   hero: { marginTop: 16, padding: 20 }, heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   eyebrow: { letterSpacing: 1, flexShrink: 1 }, reading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 8, marginTop: 16, marginBottom: 8 },
   odometer: { fontWeight: '800', letterSpacing: -1 }, heroButton: { marginTop: 20 }, button: { minHeight: 48 },

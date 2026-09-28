@@ -4,6 +4,8 @@ import { mmkvStorage } from '@/src/storage/adapter';
 import { CURRENT_SCHEMA_VERSION, migratePersistedState } from '@/src/storage/migrations';
 import { createRulesForMotorcycle } from '@/src/data/maintenance/templates';
 import { deleteRemindersWithIntegrations, updateReminderWithIntegrations } from '@/src/services/reminder-coordinator';
+import { removeMotorcyclePhoto } from '@/src/services/motorcycle-photo';
+import { isBeforeToday } from '@/src/domain/date';
 import type { MaintenanceLog, MaintenanceRule, Motorcycle, OdometerLog, Reminder, ThemeMode, UserPreferences } from '@/src/domain/types';
 
 interface AppState {
@@ -21,7 +23,7 @@ interface AppState {
   setActiveMotorcycle: (id: string) => void;
   updateOdometer: (motorcycleId: string, value: number) => void;
   updateMaintenanceRule: (id: string, changes: Partial<MaintenanceRule>) => void;
-  addCustomRule: (input: Pick<MaintenanceRule, 'motorcycleId' | 'title' | 'intervalKm' | 'intervalDays'>) => void;
+  addCustomRule: (input: Pick<MaintenanceRule, 'motorcycleId' | 'title' | 'intervalKm' | 'intervalDays' | 'lastCompletedKm' | 'lastCompletedAt'>) => void;
   completeMaintenance: (ruleId: string, input: { completedAt: string; odometer?: number; cost?: number; notes?: string }) => Promise<string | undefined>;
   addReminder: (reminder: Reminder) => void;
   updateReminder: (id: string, changes: Partial<Reminder>) => void;
@@ -54,9 +56,14 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
     }));
     return id;
   },
-  updateMotorcycle: (id, changes) => set((state) => ({ motorcycles: state.motorcycles.map((motorcycle) => motorcycle.id === id ? { ...motorcycle, ...changes, updatedAt: new Date().toISOString() } : motorcycle) })),
+  updateMotorcycle: (id, changes) => set((state) => {
+    const motorcycle = state.motorcycles.find((item) => item.id === id);
+    if (motorcycle?.photoUri && Object.prototype.hasOwnProperty.call(changes, 'photoUri') && changes.photoUri !== motorcycle.photoUri) removeMotorcyclePhoto(motorcycle.photoUri);
+    return { motorcycles: state.motorcycles.map((item) => item.id === id ? { ...item, ...changes, updatedAt: new Date().toISOString() } : item) };
+  }),
   deleteMotorcycle: async (id) => {
     await deleteRemindersWithIntegrations(get().reminders.filter((reminder) => reminder.motorcycleId === id));
+    removeMotorcyclePhoto(get().motorcycles.find((motorcycle) => motorcycle.id === id)?.photoUri);
     set((state) => {
     const motorcycles = state.motorcycles.filter((motorcycle) => motorcycle.id !== id);
     return {
@@ -88,7 +95,8 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
     if (!rule) return state;
     const log: MaintenanceLog = { id: uid(), motorcycleId: rule.motorcycleId, maintenanceRuleId: rule.id, maintenanceType: rule.type, title: rule.title, ...input, createdAt: new Date().toISOString() };
     const odometerChanged = input.odometer !== undefined;
-    return { maintenanceRules: state.maintenanceRules.map((item) => item.id === ruleId ? { ...item, lastCompletedAt: input.completedAt, lastCompletedKm: input.odometer ?? item.lastCompletedKm, updatedAt: new Date().toISOString() } : item), motorcycles: odometerChanged ? state.motorcycles.map((motorcycle) => motorcycle.id === rule.motorcycleId ? { ...motorcycle, currentOdometer: input.odometer!, updatedAt: new Date().toISOString() } : motorcycle) : state.motorcycles, odometerLogs: odometerChanged ? [...state.odometerLogs, { id: uid(), motorcycleId: rule.motorcycleId, value: input.odometer!, recordedAt: input.completedAt, createdAt: new Date().toISOString() }] : state.odometerLogs, maintenanceLogs: [...state.maintenanceLogs, log] };
+    const updateMotorcycleOdometer = odometerChanged && !isBeforeToday(input.completedAt);
+    return { maintenanceRules: state.maintenanceRules.map((item) => item.id === ruleId ? { ...item, lastCompletedAt: input.completedAt, lastCompletedKm: input.odometer ?? item.lastCompletedKm, updatedAt: new Date().toISOString() } : item), motorcycles: updateMotorcycleOdometer ? state.motorcycles.map((motorcycle) => motorcycle.id === rule.motorcycleId ? { ...motorcycle, currentOdometer: input.odometer!, updatedAt: new Date().toISOString() } : motorcycle) : state.motorcycles, odometerLogs: odometerChanged ? [...state.odometerLogs, { id: uid(), motorcycleId: rule.motorcycleId, value: input.odometer!, recordedAt: input.completedAt, createdAt: new Date().toISOString() }] : state.odometerLogs, maintenanceLogs: [...state.maintenanceLogs, log] };
     });
     // Only time-based, one-shot service reminders follow completion. Recurring reminders keep their own cadence.
     if (!completedRule.intervalDays) return;
@@ -115,6 +123,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   setUseMotorcycleAccent: (value) => set((state) => ({ preferences: { ...state.preferences, useMotorcycleAccent: value } })),
   resetData: async () => {
     await deleteRemindersWithIntegrations(get().reminders);
+    get().motorcycles.forEach((motorcycle) => removeMotorcyclePhoto(motorcycle.photoUri));
     set({ schemaVersion: CURRENT_SCHEMA_VERSION, motorcycles: [], activeMotorcycleId: undefined, odometerLogs: [], maintenanceRules: [], maintenanceLogs: [], reminders: [], preferences: initialPreferences });
   },
 }), {

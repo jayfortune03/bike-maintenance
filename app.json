@@ -17,6 +17,14 @@
       "expo-font",
       "@react-native-community/datetimepicker",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Izinkan Motor Care mengakses foto untuk profil motor.",
+          "cameraPermission": "Izinkan Motor Care menggunakan kamera untuk memotret motor.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/branding/splash-light.png",
@@ -32,6 +40,7 @@
     ],
     "android": {
       "package": "com.motorcare.app",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/adaptive-foreground.png",
         "monochromeImage": "./assets/branding/adaptive-monochrome.png",

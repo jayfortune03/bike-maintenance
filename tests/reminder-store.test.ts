@@ -2,11 +2,13 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { useAppStore } from '../src/store/app.store';
 import { deleteRemindersWithIntegrations, updateReminderWithIntegrations } from '../src/services/reminder-coordinator';
 import type { MaintenanceRule, Motorcycle, Reminder } from '../src/domain/types';
+import { removeMotorcyclePhoto } from '../src/services/motorcycle-photo';
 
 vi.mock('../src/storage/adapter', () => ({ mmkvStorage: { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() } }));
 vi.mock('../src/services/reminder-coordinator', () => ({ deleteRemindersWithIntegrations: vi.fn(), updateReminderWithIntegrations: vi.fn() }));
+vi.mock('../src/services/motorcycle-photo', () => ({ removeMotorcyclePhoto: vi.fn() }));
 const at = new Date(2030, 0, 1, 9).toISOString();
-const motorcycle = { id: 'm1', currentOdometer: 1000 } as Motorcycle;
+const motorcycle = { id: 'm1', currentOdometer: 1000, photoUri: 'file:///motorcycle-photos/m1.jpg' } as Motorcycle;
 const rule = { id: 'oil', motorcycleId: 'm1', type: 'engine-oil', title: 'Oli', lastCompletedKm: 900, intervalDays: 30 } as MaintenanceRule;
 const reminder = { id: 'r1', motorcycleId: 'm1', maintenanceRuleId: 'oil', repeat: 'none', scheduledAt: at } as Reminder;
 
@@ -26,6 +28,21 @@ it('cleans resources before deleting a motorcycle or resetting data, retaining r
   await useAppStore.getState().deleteMotorcycle('m1');
   expect(deleteRemindersWithIntegrations).toHaveBeenCalledWith([reminder]);
   expect(useAppStore.getState().reminders).toHaveLength(0);
+  expect(removeMotorcyclePhoto).toHaveBeenCalledWith(motorcycle.photoUri);
+});
+
+it('removes a profile photo only when its URI changes', () => {
+  useAppStore.getState().updateMotorcycle('m1', { nickname: 'Nama baru' });
+  expect(removeMotorcyclePhoto).not.toHaveBeenCalled();
+
+  useAppStore.getState().updateMotorcycle('m1', { photoUri: 'file:///motorcycle-photos/replacement.jpg' });
+  expect(removeMotorcyclePhoto).toHaveBeenCalledWith(motorcycle.photoUri);
+});
+
+it('removes profile photos when all local data is reset', async () => {
+  await useAppStore.getState().resetData();
+  expect(removeMotorcyclePhoto).toHaveBeenCalledWith(motorcycle.photoUri);
+  expect(useAppStore.getState().motorcycles).toHaveLength(0);
 });
 
 it('keeps mileage baseline when completion omits mileage and reschedules time-based one-shot reminders', async () => {
@@ -33,6 +50,26 @@ it('keeps mileage baseline when completion omits mileage and reschedules time-ba
   expect(useAppStore.getState().maintenanceRules[0].lastCompletedKm).toBe(900);
   expect(useAppStore.getState().maintenanceLogs).toHaveLength(1);
   expect(useAppStore.getState().reminders[0].scheduledAt).toBe(new Date(2030, 0, 31, 9).toISOString());
+});
+
+it('keeps the current odometer when logging historical service mileage', async () => {
+  const today = new Date();
+  const completedAt = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 9).toISOString();
+  await useAppStore.getState().completeMaintenance('oil', { completedAt, odometer: 800 });
+
+  expect(useAppStore.getState().motorcycles[0].currentOdometer).toBe(1000);
+  expect(useAppStore.getState().maintenanceRules[0].lastCompletedKm).toBe(800);
+  expect(useAppStore.getState().odometerLogs.at(-1)).toMatchObject({ value: 800, recordedAt: completedAt });
+});
+
+it('does not replace the current odometer with a higher historical reading', async () => {
+  const today = new Date();
+  const completedAt = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 9).toISOString();
+  await useAppStore.getState().completeMaintenance('oil', { completedAt, odometer: 1100 });
+
+  expect(useAppStore.getState().motorcycles[0].currentOdometer).toBe(1000);
+  expect(useAppStore.getState().maintenanceRules[0].lastCompletedKm).toBe(1100);
+  expect(useAppStore.getState().odometerLogs.at(-1)).toMatchObject({ value: 1100, recordedAt: completedAt });
 });
 
 it('keeps completed history when rescheduling fails, and does not alter independent recurring reminders', async () => {

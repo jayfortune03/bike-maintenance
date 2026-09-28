@@ -4,40 +4,55 @@ import { Button, Card, HelperText, IconButton, Text, TextInput, useTheme } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/src/components/Screen';
+import { DateTimeField } from '@/src/components/DateTimeField';
 import { MaintenanceCard } from '@/src/components/MaintenanceCard';
 import { Sheet } from '@/src/components/Sheet';
+import { isBeforeToday } from '@/src/domain/date';
+import { formatIntegerInput, parseIntegerInput } from '@/src/domain/integer-input';
 import { useAppStore } from '@/src/store/app.store';
 import { CARD_SHADOW } from '@/src/theme/theme';
 
 export default function MaintenanceDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, action } = useLocalSearchParams<{ id: string; action?: string }>();
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const rule = useAppStore((state) => state.maintenanceRules.find((item) => item.id === id));
   const motorcycle = useAppStore((state) => state.motorcycles.find((item) => item.id === rule?.motorcycleId));
   const complete = useAppStore((state) => state.completeMaintenance);
-  const [visible, setVisible] = useState(false);
-  const [odometer, setOdometer] = useState(motorcycle ? String(motorcycle.currentOdometer) : '');
+  const [visible, setVisible] = useState(action === 'log');
+  const [completedAt, setCompletedAt] = useState(new Date().toISOString());
+  const [odometer, setOdometer] = useState(motorcycle ? formatIntegerInput(String(motorcycle.currentOdometer)) : '');
   const [error, setError] = useState('');
+  const [dateError, setDateError] = useState('');
   const [confirmCorrection, setConfirmCorrection] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
 
   const save = async () => {
     if (!rule || !motorcycle || saving) return;
-    const value = odometer.trim() ? Number(odometer) : undefined;
+    const completedAtMs = new Date(completedAt).getTime();
+    if (!Number.isFinite(completedAtMs) || completedAtMs > Date.now()) {
+      setDateError('Tanggal perawatan harus valid dan tidak boleh di masa depan.');
+      return;
+    }
+    setDateError('');
+    const value = parseIntegerInput(odometer);
+    if (rule.intervalKm && value === undefined) {
+      setError('Odometer wajib diisi agar sisa jarak dapat dihitung dari perawatan ini.');
+      return;
+    }
     if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) {
       setError('Masukkan kilometer berupa angka bulat, minimal 0.');
       return;
     }
-    if (value !== undefined && value < motorcycle.currentOdometer && !confirmCorrection) {
+    if (value !== undefined && value < motorcycle.currentOdometer && !isBeforeToday(completedAt) && !confirmCorrection) {
       setConfirmCorrection(true);
       return;
     }
     setSaving(true);
     try {
-      const warning = await complete(rule.id, { completedAt: new Date().toISOString(), odometer: value });
+      const warning = await complete(rule.id, { completedAt, odometer: value });
       setNotice(warning ?? 'Perawatan berhasil dicatat.');
       setVisible(false);
     } catch {
@@ -83,8 +98,10 @@ export default function MaintenanceDetailScreen() {
         </Card>
         <View style={styles.buttons}>
           <Button mode="contained" contentStyle={styles.button} onPress={() => {
-            setOdometer(String(motorcycle.currentOdometer));
+            setCompletedAt(new Date().toISOString());
+            setOdometer(formatIntegerInput(String(motorcycle.currentOdometer)));
             setError('');
+            setDateError('');
             setConfirmCorrection(false);
             setVisible(true);
           }}>Tandai selesai</Button>
@@ -97,21 +114,25 @@ export default function MaintenanceDetailScreen() {
             <IconButton disabled={saving} icon="close" accessibilityLabel="Tutup catatan perawatan" onPress={() => setVisible(false)} />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.sheetContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-            <Text variant="bodyMedium">Simpan riwayat untuk {rule.title}. Odometer motor juga akan diperbarui jika diisi.</Text>
+            <Text variant="bodyMedium">Simpan riwayat untuk {rule.title}. {rule.intervalKm ? 'Odometer diperlukan untuk menghitung sisa jarak.' : 'Odometer motor juga akan diperbarui jika diisi.'}</Text>
+            <View>
+              <DateTimeField label="Tanggal perawatan" value={completedAt} onChange={(value) => { setCompletedAt(value); setDateError(''); setConfirmCorrection(false); }} disabled={saving} dateOnly error={!!dateError} />
+              {dateError ? <HelperText type="error" accessibilityLiveRegion="polite">{dateError}</HelperText> : null}
+            </View>
             <View>
               <TextInput
-                label="Odometer (opsional)"
-                accessibilityLabel="Odometer (opsional)"
+                label={rule.intervalKm ? 'Odometer' : 'Odometer (opsional)'}
+                accessibilityLabel={rule.intervalKm ? 'Odometer' : 'Odometer (opsional)'}
                 mode="outlined"
                 value={odometer}
                 disabled={saving}
-                onChangeText={(value) => { setOdometer(value); setError(''); setConfirmCorrection(false); }}
+                onChangeText={(value) => { setOdometer(formatIntegerInput(value)); setError(''); setConfirmCorrection(false); }}
                 keyboardType="number-pad"
                 error={!!error}
                 right={<TextInput.Affix text="km" />}
               />
               {error ? <HelperText type="error" accessibilityLiveRegion="polite">{error}</HelperText> : null}
-              <HelperText type="info">Terakhir {motorcycle.currentOdometer.toLocaleString('id-ID')} km.</HelperText>
+              <HelperText type="info">{isBeforeToday(completedAt) ? 'Masukkan odometer saat perawatan dilakukan.' : `Odometer motor saat ini: ${motorcycle.currentOdometer.toLocaleString('id-ID')} km.`}</HelperText>
             </View>
             {confirmCorrection ? (
               <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.error }}>

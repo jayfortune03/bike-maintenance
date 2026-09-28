@@ -4,7 +4,11 @@ import { Button, HelperText, Text, TextInput, useTheme } from 'react-native-pape
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/src/components/Screen';
+import { MotorcycleColorPicker } from '@/src/components/MotorcycleColorPicker';
+import { MotorcyclePhotoPicker } from '@/src/components/MotorcyclePhotoPicker';
+import { MOTORCYCLE_COLORS, type MotorcycleColor } from '@/src/data/motorcycle-colors';
 import { useAppStore } from '@/src/store/app.store';
+import { persistMotorcyclePhoto, removeMotorcyclePhoto } from '@/src/services/motorcycle-photo';
 import { CARD_SHADOW } from '@/src/theme/theme';
 
 export default function EditMotorcycleScreen() {
@@ -17,18 +21,31 @@ export default function EditMotorcycleScreen() {
   const [nickname, setNickname] = useState(motorcycle?.nickname ?? '');
   const [brand, setBrand] = useState(motorcycle?.brand ?? '');
   const [model, setModel] = useState(motorcycle?.model ?? '');
+  const [color, setColor] = useState<MotorcycleColor>(() => MOTORCYCLE_COLORS.find((item) => item.value === motorcycle?.themeColor) ?? MOTORCYCLE_COLORS[0]);
+  const [photoUri, setPhotoUri] = useState(motorcycle?.photoUri ?? '');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const save = () => {
+  const save = async () => {
     setSubmitted(true);
-    if (!motorcycle || !nickname.trim() || !brand.trim() || !model.trim()) return;
+    if (!motorcycle || !nickname.trim() || !brand.trim() || !model.trim() || saving) return;
+    setSaving(true);
+    let newPhotoUri: string | undefined;
+    let saved = false;
     try {
-      update(motorcycle.id, { nickname: nickname.trim(), brand: brand.trim(), model: model.trim() });
-      router.back();
+      const nextPhotoUri = photoUri
+        ? (photoUri === motorcycle.photoUri ? photoUri : (newPhotoUri = persistMotorcyclePhoto(photoUri)))
+        : undefined;
+      update(motorcycle.id, { nickname: nickname.trim(), brand: brand.trim(), model: model.trim(), themeColor: color.value, colorName: color.name, photoUri: nextPhotoUri });
+      saved = true;
     } catch {
+      removeMotorcyclePhoto(newPhotoUri);
       setError('Perubahan belum tersimpan. Coba lagi.');
+    } finally {
+      setSaving(false);
     }
+    if (saved) router.back();
   };
 
   if (!motorcycle) return (
@@ -49,7 +66,7 @@ export default function EditMotorcycleScreen() {
           <Button icon="arrow-left" onPress={() => router.back()} style={styles.back} contentStyle={styles.button}>Detail motor</Button>
           <View style={styles.heading}>
             <Text variant="headlineSmall" accessibilityRole="header" style={styles.title}>Edit motor</Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Perbarui identitas motor. Riwayat perawatan Anda tetap tersimpan.</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Perbarui identitas, warna, dan foto motor. Riwayat perawatan Anda tetap tersimpan.</Text>
           </View>
           <View style={[styles.fields, CARD_SHADOW, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
             <Text variant="titleMedium">Identitas motor</Text>
@@ -66,8 +83,10 @@ export default function EditMotorcycleScreen() {
               {submitted && !model.trim() ? <HelperText type="error">Model wajib diisi.</HelperText> : null}
             </View>
           </View>
+          <MotorcycleColorPicker selected={color} onSelect={setColor} />
+          <MotorcyclePhotoPicker value={photoUri} onChange={setPhotoUri} disabled={saving} />
           {error ? <HelperText type="error" accessibilityLiveRegion="polite">{error}</HelperText> : null}
-          <Button mode="contained" onPress={save} contentStyle={styles.button}>Simpan perubahan</Button>
+          <Button mode="contained" onPress={save} loading={saving} disabled={saving} contentStyle={styles.button}>Simpan perubahan</Button>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>

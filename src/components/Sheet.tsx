@@ -66,7 +66,7 @@ export function Sheet({ visible, onDismiss, children }: PropsWithChildren<{
       </Animated.View>
       <KeyboardAvoidingView
         pointerEvents="box-none"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={[styles.overlay, { paddingTop: insets.top + 24, paddingLeft: insets.left, paddingRight: insets.right }]}
       >
         <Animated.View

@@ -4,18 +4,14 @@ import { Button, HelperText, ProgressBar, RadioButton, Text, TextInput, useTheme
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/src/components/Screen';
+import { MotorcycleColorPicker } from '@/src/components/MotorcycleColorPicker';
+import { MotorcyclePhotoPicker } from '@/src/components/MotorcyclePhotoPicker';
+import { MOTORCYCLE_COLORS, type MotorcycleColor } from '@/src/data/motorcycle-colors';
 import { useAppStore } from '@/src/store/app.store';
+import { formatIntegerInput, parseIntegerInput } from '@/src/domain/integer-input';
 import type { MotorcycleType } from '@/src/domain/types';
+import { persistMotorcyclePhoto, removeMotorcyclePhoto } from '@/src/services/motorcycle-photo';
 import { CARD_SHADOW } from '@/src/theme/theme';
-
-const colors = [
-  { name: 'Biru', value: '#2563EB' },
-  { name: 'Merah', value: '#DC2626' },
-  { name: 'Hitam', value: '#334155' },
-  { name: 'Putih', value: '#CBD5E1' },
-  { name: 'Hijau', value: '#16A34A' },
-  { name: 'Kuning', value: '#CA8A04' },
-];
 
 export default function AddMotorcycleScreen() {
   const router = useRouter();
@@ -31,12 +27,15 @@ export default function AddMotorcycleScreen() {
   const [year, setYear] = useState('');
   const [type, setType] = useState<MotorcycleType>('scooter');
   const [odometer, setOdometer] = useState('0');
-  const [color, setColor] = useState(colors[0]);
+  const [color, setColor] = useState<MotorcycleColor>(MOTORCYCLE_COLORS[0]);
+  const [photoUri, setPhotoUri] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const odometerValue = parseIntegerInput(odometer);
   const suggestedNickname = nickname.trim() || model.trim();
   const invalidYear = !!year && !/^\d{4}$/.test(year.trim());
-  const invalidOdometer = !odometer.trim() || !Number.isSafeInteger(Number(odometer)) || Number(odometer) < 0;
+  const invalidOdometer = odometerValue === undefined || !Number.isSafeInteger(odometerValue) || odometerValue < 0;
   const sectionStyle = [styles.fields, CARD_SHADOW, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }];
 
   const moveToStep = (value: number) => {
@@ -46,7 +45,7 @@ export default function AddMotorcycleScreen() {
     setStep(value);
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   };
-  const next = () => {
+  const next = async () => {
     setSubmitted(true);
     if (step === 1 && (!brand.trim() || !model.trim())) return;
     if (step === 2 && (!suggestedNickname || invalidYear)) return;
@@ -55,7 +54,11 @@ export default function AddMotorcycleScreen() {
       moveToStep(step + 1);
       return;
     }
+    if (odometerValue === undefined || saving) return;
+    setSaving(true);
+    let savedPhotoUri: string | undefined;
     try {
+      savedPhotoUri = photoUri ? persistMotorcyclePhoto(photoUri) : undefined;
       const id = addMotorcycle({
         nickname: suggestedNickname,
         brand: brand.trim(),
@@ -63,14 +66,18 @@ export default function AddMotorcycleScreen() {
         variant: variant.trim() || undefined,
         year: year ? Number(year) : undefined,
         type,
-        currentOdometer: Number(odometer),
+        currentOdometer: odometerValue,
         themeColor: color.value,
         colorName: color.name,
+        photoUri: savedPhotoUri,
       });
       useAppStore.getState().setActiveMotorcycle(id);
       router.replace('/');
     } catch {
+      removeMotorcyclePhoto(savedPhotoUri);
       setError('Motor belum tersimpan. Coba lagi.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -141,7 +148,7 @@ export default function AddMotorcycleScreen() {
                 <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Lihat angka odometer di panel motor, bukan trip meter. Anda bisa memperbaruinya kapan saja.</Text>
               </View>
               <View style={sectionStyle}>
-                <TextInput label="Odometer saat ini" accessibilityLabel="Odometer saat ini" mode="outlined" value={odometer} onChangeText={setOdometer} keyboardType="number-pad" right={<TextInput.Affix text="km" />} error={submitted && invalidOdometer} />
+                <TextInput label="Odometer saat ini" accessibilityLabel="Odometer saat ini" mode="outlined" value={odometer} onChangeText={(value) => setOdometer(formatIntegerInput(value))} keyboardType="number-pad" right={<TextInput.Affix text="km" />} error={submitted && invalidOdometer} />
                 {submitted && invalidOdometer ? <HelperText type="error">Masukkan kilometer berupa angka bulat, minimal 0.</HelperText> : null}
               </View>
             </>
@@ -151,23 +158,8 @@ export default function AddMotorcycleScreen() {
                 <Text variant="headlineSmall" accessibilityRole="header" style={styles.title}>Pilih warna motor</Text>
                 <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Warna ini membantu Anda mengenali motor di garage.</Text>
               </View>
-              <View style={[sectionStyle, styles.swatches]}>
-                {colors.map((item) => (
-                  <Button
-                    key={item.value}
-                    mode={color.value === item.value ? 'contained' : 'outlined'}
-                    icon={color.value === item.value ? 'check' : undefined}
-                    accessibilityState={{ selected: color.value === item.value }}
-                    onPress={() => setColor(item)}
-                    style={styles.swatch}
-                    contentStyle={styles.button}
-                    buttonColor={color.value === item.value ? item.value : undefined}
-                    textColor={color.value === item.value ? (item.name === 'Putih' || item.name === 'Kuning' ? '#0F172A' : '#FFFFFF') : theme.colors.onSurface}
-                  >
-                    {item.name}
-                  </Button>
-                ))}
-              </View>
+              <MotorcycleColorPicker selected={color} onSelect={setColor} />
+              <MotorcyclePhotoPicker value={photoUri} onChange={setPhotoUri} disabled={saving} />
               <View style={sectionStyle}>
                 <Text variant="titleMedium">Ringkasan motor</Text>
                 <Text variant="headlineSmall" style={styles.title}>{suggestedNickname}</Text>
@@ -175,12 +167,12 @@ export default function AddMotorcycleScreen() {
                 <Text variant="bodyMedium">
                   {type === 'scooter' ? 'Skuter' : type === 'cub' ? 'Bebek' : 'Manual'}{year ? ` / ${year}` : ''} / {color.name}
                 </Text>
-                <Text variant="bodyLarge">{Number(odometer).toLocaleString('id-ID')} km</Text>
+                <Text variant="bodyLarge">{odometerValue?.toLocaleString('id-ID') ?? '0'} km</Text>
               </View>
             </>
           )}
           {error ? <HelperText type="error" accessibilityLiveRegion="polite">{error}</HelperText> : null}
-          <Button mode="contained" onPress={next} contentStyle={styles.button}>{step === 4 ? 'Simpan motor' : 'Lanjut'}</Button>
+          <Button mode="contained" onPress={next} loading={saving} disabled={saving} contentStyle={styles.button}>{step === 4 ? 'Simpan motor' : 'Lanjut'}</Button>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -196,7 +188,5 @@ const styles = StyleSheet.create({
   heading: { gap: 8 },
   title: { fontWeight: '700' },
   fields: { gap: 16, padding: 20, borderRadius: 20, borderWidth: 1 },
-  swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  swatch: { flexGrow: 1, flexBasis: '40%' },
   button: { minHeight: 48 },
 });

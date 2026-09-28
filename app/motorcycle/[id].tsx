@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Screen } from '@/src/components/Screen';
 import { OdometerDialog } from '@/src/components/OdometerDialog';
 import { MaintenanceCard } from '@/src/components/MaintenanceCard';
+import { MotorcycleVisual } from '@/src/components/MotorcycleVisual';
 import { useAppStore } from '@/src/store/app.store';
 import { CARD_SHADOW } from '@/src/theme/theme';
 
@@ -40,9 +41,7 @@ export default function MotorcycleDetailScreen() {
       }]}>
         <Button icon="arrow-left" onPress={() => router.back()} style={styles.back}>Garage</Button>
         <View style={styles.titleRow}>
-          <View style={[styles.badge, { backgroundColor: theme.colors.primaryContainer }]}>
-            <Text style={[styles.badgeText, { color: theme.colors.onPrimaryContainer }]}>{motorcycle.model.slice(0, 2).toUpperCase()}</Text>
-          </View>
+          <MotorcycleVisual color={motorcycle.themeColor} photoUri={motorcycle.photoUri} size={64} />
           <View style={styles.titleCopy}>
             <Text variant="headlineSmall" accessibilityRole="header" style={styles.title}>{motorcycle.nickname}</Text>
             <Text variant="bodyLarge">{motorcycle.brand} {motorcycle.model}</Text>
@@ -113,8 +112,6 @@ const styles = StyleSheet.create({
   back: { alignSelf: 'flex-start', marginLeft: -8 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 24 },
   titleCopy: { flex: 1, gap: 8 },
-  badge: { width: 64, height: 64, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  badgeText: { fontSize: 20, fontWeight: '700' },
   title: { fontWeight: '700' },
   odometer: { marginTop: 24, borderRadius: 20 },
   cardContent: { padding: 20, gap: 16 },

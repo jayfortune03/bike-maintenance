@@ -1,10 +1,16 @@
 import { MD3DarkTheme, MD3LightTheme, type MD3Theme } from 'react-native-paper';
-import type { ThemeMode } from '@/src/domain/types';
+import type { MaintenanceStatus, ThemeMode } from '@/src/domain/types';
 import { accentColors } from './accent';
 
 export const BLUE = '#2563EB';
 export const ORANGE = '#EA580C';
 export const CARD_SHADOW = { elevation: 2, boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.10)' } as const;
+
+export function maintenanceStatusColors(dark: boolean): Record<MaintenanceStatus, string> {
+  return dark
+    ? { good: '#86EFAC', soon: '#FDE68A', due: '#FDBA74', overdue: '#FCA5A5' }
+    : { good: '#166534', soon: '#854D0E', due: '#9A3412', overdue: '#991B1B' };
+}
 
 export function getAppTheme(mode: ThemeMode, systemIsDark: boolean, accent = BLUE): MD3Theme {
   const isDark = mode === 'dark' || (mode === 'system' && systemIsDark);

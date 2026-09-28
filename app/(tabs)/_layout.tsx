@@ -1,5 +1,5 @@
 import { useEffect, useState, type PropsWithChildren } from 'react';
-import { AccessibilityInfo, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Keyboard, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { CommonActions, useIsFocused, useNavigation, type ParamListBase } from '@react-navigation/native';
@@ -12,38 +12,42 @@ import { getTabSwipeTarget } from '@/src/domain/tab-swipe';
 
 const icons = { index: 'view-dashboard-outline', garage: 'garage-variant', maintenance: 'wrench-clock-outline', settings: 'cog-outline' } as const;
 
+function inputFocused(): boolean {
+  if (Platform.OS !== 'web') return TextInput.State.currentlyFocusedInput() !== null;
+  const element = document.activeElement;
+  return element instanceof HTMLElement && (element.matches('input, textarea, select') || element.isContentEditable);
+}
+
 function SwipeTabScreen({ children }: PropsWithChildren) {
   const navigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
   const focused = useIsFocused();
-  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  const swipe = Gesture.Pan()
+    .enabled(focused && !keyboardVisible)
+    .runOnJS(true)
+    .maxPointers(1)
+    .activeOffsetX([-64, 64])
+    .failOffsetY([-24, 24])
+    .onEnd((event, success) => {
+      if (!success || !navigation.isFocused() || inputFocused()) return;
+      const state = navigation.getState();
+      const index = getTabSwipeTarget(state.index, state.routes.length, event.translationX, event.translationY);
+      if (index === null) return;
+      const target = state.routes[index];
+      navigation.dispatch({ ...CommonActions.navigate(target.name, target.params), target: state.key });
+    });
 
   return (
-    <View style={styles.fill}>
-      {children}
-      {/* Restrict touch-action to gutters so web chips and inputs keep native gestures. */}
-      {(['left', 'right'] as const).map((side) => {
-        const swipe = Gesture.Pan()
-          .enabled(focused)
-          .runOnJS(true)
-          .maxPointers(1)
-          .activeOffsetX(side === 'left' ? 24 : -24)
-          .failOffsetX(side === 'left' ? -12 : 12)
-          .failOffsetY([-12, 12])
-          .onEnd((event, success) => {
-            if (!success || !navigation.isFocused()) return;
-            const state = navigation.getState();
-            const index = getTabSwipeTarget(state.index, state.routes.length, event.translationX, event.translationY);
-            if (index === null) return;
-            const target = state.routes[index];
-            navigation.dispatch({ ...CommonActions.navigate(target.name, target.params), target: state.key });
-          });
-        return (
-          <GestureDetector key={side} gesture={swipe} touchAction="pan-y">
-            <View collapsable={false} accessible={false} style={[styles.edge, { top: insets.top, [side]: insets[side] }]} />
-          </GestureDetector>
-        );
-      })}
-    </View>
+    <GestureDetector gesture={swipe} touchAction="pan-y">
+      <View style={styles.fill}>{children}</View>
+    </GestureDetector>
   );
 }
 
@@ -80,4 +84,4 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({ fill: { flex: 1 }, edge: { position: 'absolute', bottom: 0, width: 20 } });
+const styles = StyleSheet.create({ fill: { flex: 1 } });

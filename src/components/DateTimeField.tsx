@@ -11,12 +11,14 @@ export function formatLocalDateTime(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function DateTimeField({ label, value, onChange, disabled = false, error = false }: {
+export function DateTimeField({ label, value, onChange, disabled = false, error = false, dateOnly = false, optional = false }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   error?: boolean;
+  dateOnly?: boolean;
+  optional?: boolean;
 }) {
   const theme = useTheme();
   const [mode, setMode] = useState<'date' | 'time' | 'datetime' | null>(null);
@@ -24,8 +26,13 @@ export function DateTimeField({ label, value, onChange, disabled = false, error 
   const date = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
   const updateFromNative = (event: DateTimePickerEvent, nextDate?: Date) => {
     if (Platform.OS === 'android') setMode(null);
-    if (event.type === 'set' && nextDate) onChange(formatLocalDateTime(nextDate));
+    if (event.type === 'set' && nextDate) {
+      const selected = new Date(nextDate);
+      if (dateOnly) selected.setHours(0, 0, 0, 0);
+      onChange(formatLocalDateTime(selected));
+    }
   };
+  const dateValue = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
   return (
     <View style={styles.field}>
@@ -36,10 +43,13 @@ export function DateTimeField({ label, value, onChange, disabled = false, error 
         <input
           aria-label={label}
           aria-invalid={error}
-          type="datetime-local"
-          value={value}
+          type={dateOnly ? 'date' : 'datetime-local'}
+          value={dateOnly ? (value ? dateValue : '') : value}
           disabled={disabled}
-          onChange={(event) => onChange(event.currentTarget.value)}
+          onChange={(event) => {
+            const selected = event.currentTarget.value;
+            onChange(dateOnly ? (selected ? `${selected}T00:00` : '') : selected);
+          }}
           style={{
             boxSizing: 'border-box', width: '100%', minWidth: 0, minHeight: 56,
             padding: 16, borderRadius: 12,
@@ -54,35 +64,52 @@ export function DateTimeField({ label, value, onChange, disabled = false, error 
         />
       ) : (
         <>
-          <View style={styles.controls}>
-            <Button
-              mode="outlined"
-              icon="calendar-outline"
-              disabled={disabled}
-              style={styles.option}
-              contentStyle={styles.button}
-              onPress={() => setMode(Platform.OS === 'ios' ? 'datetime' : 'date')}
-              accessibilityLabel={`Pilih tanggal: ${date.toLocaleDateString('id-ID')}`}
-            >
-              {date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </Button>
-            <Button
-              mode="outlined"
-              icon="clock-outline"
-              disabled={disabled}
-              style={styles.option}
-              contentStyle={styles.button}
-              onPress={() => setMode(Platform.OS === 'ios' ? 'datetime' : 'time')}
-              accessibilityLabel={`Pilih waktu: ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`}
-            >
-              {date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-            </Button>
-          </View>
+          {dateOnly ? (
+            <View style={styles.controls}>
+              <Button
+                mode="outlined"
+                icon="calendar-outline"
+                disabled={disabled}
+                style={styles.option}
+                contentStyle={styles.button}
+                onPress={() => setMode('date')}
+                accessibilityLabel={value ? `Pilih tanggal: ${date.toLocaleDateString('id-ID')}` : `Pilih ${label.toLowerCase()}`}
+              >
+                {value ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Pilih tanggal'}
+              </Button>
+              {optional && value ? <Button mode="text" icon="close" disabled={disabled} contentStyle={styles.button} onPress={() => { setMode(null); onChange(''); }}>Hapus</Button> : null}
+            </View>
+          ) : (
+            <View style={styles.controls}>
+              <Button
+                mode="outlined"
+                icon="calendar-outline"
+                disabled={disabled}
+                style={styles.option}
+                contentStyle={styles.button}
+                onPress={() => setMode(Platform.OS === 'ios' ? 'datetime' : 'date')}
+                accessibilityLabel={`Pilih tanggal: ${date.toLocaleDateString('id-ID')}`}
+              >
+                {date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </Button>
+              <Button
+                mode="outlined"
+                icon="clock-outline"
+                disabled={disabled}
+                style={styles.option}
+                contentStyle={styles.button}
+                onPress={() => setMode(Platform.OS === 'ios' ? 'datetime' : 'time')}
+                accessibilityLabel={`Pilih waktu: ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`}
+              >
+                {date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+              </Button>
+            </View>
+          )}
           {mode && !disabled ? (
             <View>
               <DateTimePicker
                 value={date}
-                mode={mode}
+                mode={dateOnly ? 'date' : mode}
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 onChange={updateFromNative}
                 themeVariant={theme.dark ? 'dark' : 'light'}

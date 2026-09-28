@@ -30,6 +30,7 @@ export interface Motorcycle {
   type: MotorcycleType;
   colorName?: string;
   themeColor: string;
+  photoUri?: string;
   currentOdometer: number;
   purchaseDate?: string;
   plateNumber?: string;

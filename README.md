@@ -20,7 +20,7 @@ Motor Care adalah aplikasi mobile personal untuk membantu pemilik motor memantau
 - Menambah, mengubah, dan menghapus motor
 - Menyimpan beberapa profil motor
 - Memilih motor aktif
-- Nickname, tipe, warna, detail motor, dan odometer saat ini
+- Nickname, tipe, warna, foto lokal, detail motor, dan odometer saat ini
 - Riwayat perubahan odometer
 - Tema aksen mengikuti motor aktif
 
@@ -30,6 +30,7 @@ Motor Care adalah aplikasi mobile personal untuk membantu pemilik motor memantau
 - Jadwal berdasarkan jarak, waktu, atau kombinasi keduanya
 - Status `Aman`, `Segera`, `Sudah waktunya`, dan `Terlambat`
 - Menandai perawatan selesai
+- Mencatat tanggal servis terakhir saat membuat jadwal atau memasukkan riwayat
 - Riwayat perawatan
 - Jadwal perawatan custom
 - Label sumber rekomendasi seperti rekomendasi umum atau jadwal custom

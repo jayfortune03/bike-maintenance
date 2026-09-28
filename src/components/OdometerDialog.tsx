@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, HelperText, IconButton, Text, TextInput, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Motorcycle } from '@/src/domain/types';
+import { formatIntegerInput, parseIntegerInput } from '@/src/domain/integer-input';
 import { Sheet } from '@/src/components/Sheet';
 
 export function OdometerDialog({ motorcycle, visible, onDismiss, onSave }: {
@@ -14,20 +15,20 @@ export function OdometerDialog({ motorcycle, visible, onDismiss, onSave }: {
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const [value, setValue] = useState(String(motorcycle.currentOdometer));
+  const [value, setValue] = useState(formatIntegerInput(String(motorcycle.currentOdometer)));
   const [error, setError] = useState('');
   const [confirmCorrection, setConfirmCorrection] = useState(false);
   useEffect(() => {
     if (visible) {
-      setValue(String(motorcycle.currentOdometer));
+      setValue(formatIntegerInput(String(motorcycle.currentOdometer)));
       setError('');
       setConfirmCorrection(false);
     }
   }, [visible, motorcycle.id, motorcycle.currentOdometer]);
 
   const save = () => {
-    const parsed = Number(value);
-    if (!value.trim() || !Number.isSafeInteger(parsed) || parsed < 0) {
+    const parsed = parseIntegerInput(value);
+    if (parsed === undefined || !Number.isSafeInteger(parsed) || parsed < 0) {
       setError('Masukkan kilometer berupa angka bulat, minimal 0.');
       return;
     }
@@ -63,7 +64,7 @@ export function OdometerDialog({ motorcycle, visible, onDismiss, onSave }: {
             label="Kilometer saat ini"
             accessibilityLabel="Kilometer saat ini"
             value={value}
-            onChangeText={(text) => { setValue(text); setError(''); setConfirmCorrection(false); }}
+            onChangeText={(text) => { setValue(formatIntegerInput(text)); setError(''); setConfirmCorrection(false); }}
             keyboardType="number-pad"
             error={!!error}
             right={<TextInput.Affix text="km" />}

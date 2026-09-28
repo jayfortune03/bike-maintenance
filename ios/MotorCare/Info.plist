@@ -49,6 +49,10 @@
     <string>Allow $(PRODUCT_NAME) to access your calendars</string>
     <key>NSCalendarsUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your calendars</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Izinkan Motor Care menggunakan kamera untuk memotret motor.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Izinkan Motor Care mengakses foto untuk profil motor.</string>
     <key>NSRemindersFullAccessUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your reminders</string>
     <key>NSRemindersUsageDescription</key>
