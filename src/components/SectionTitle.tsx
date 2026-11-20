@@ -1,9 +1,20 @@
 import { StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Button, Text, useTheme } from 'react-native-paper';
+import { SPACING } from '@/src/theme/theme';
 
-export function SectionTitle({ children, action }: { children: string; action?: string }) {
+type SectionTitleProps = {
+  readonly children: string;
+  readonly description?: string;
+} & ({ readonly action?: never; readonly onAction?: never } | { readonly action: string; readonly onAction: () => void });
+
+export function SectionTitle({ children, description, action, onAction }: SectionTitleProps) {
   const theme = useTheme();
-  return <View style={styles.row}><Text accessibilityRole="header" variant="titleMedium" style={[styles.title, { color: theme.colors.onSurface }]}>{children}</Text>{action ? <Text variant="labelLarge" style={{ color: theme.colors.primary }}>{action}</Text> : null}</View>;
+  return <View style={styles.row}><View style={styles.copy}><Text accessibilityRole="header" variant="titleMedium" style={{ color: theme.colors.onSurface }}>{children}</Text>{description ? <Text variant="bodySmall" style={[styles.description, { color: theme.colors.onSurfaceVariant }]}>{description}</Text> : null}</View>{action && onAction ? <Button compact onPress={onAction} contentStyle={styles.action}>{action}</Button> : null}</View>;
 }
 
-const styles = StyleSheet.create({ row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, marginBottom: 12 }, title: { fontWeight: '700', letterSpacing: 0.1 } });
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: SPACING.md, marginTop: SPACING.wide, marginBottom: SPACING.md },
+  copy: { flex: 1, minWidth: 0 },
+  description: { marginTop: SPACING.xs },
+  action: { minHeight: SPACING.touch },
+});

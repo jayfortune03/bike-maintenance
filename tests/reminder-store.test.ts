@@ -3,10 +3,12 @@ import { useAppStore } from '../src/store/app.store';
 import { deleteRemindersWithIntegrations, updateReminderWithIntegrations } from '../src/services/reminder-coordinator';
 import type { MaintenanceRule, Motorcycle, Reminder } from '../src/domain/types';
 import { removeMotorcyclePhoto } from '../src/services/motorcycle-photo';
+import { cancelOilReminder, cancelOilReminders } from '../src/services/oil-reminder-notifications';
 
 vi.mock('../src/storage/adapter', () => ({ mmkvStorage: { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() } }));
 vi.mock('../src/services/reminder-coordinator', () => ({ deleteRemindersWithIntegrations: vi.fn(), updateReminderWithIntegrations: vi.fn() }));
 vi.mock('../src/services/motorcycle-photo', () => ({ removeMotorcyclePhoto: vi.fn() }));
+vi.mock('../src/services/oil-reminder-notifications', () => ({ cancelOilReminder: vi.fn(), cancelOilReminders: vi.fn() }));
 const at = new Date(2030, 0, 1, 9).toISOString();
 const motorcycle = { id: 'm1', currentOdometer: 1000, photoUri: 'file:///motorcycle-photos/m1.jpg' } as Motorcycle;
 const rule = { id: 'oil', motorcycleId: 'm1', type: 'engine-oil', title: 'Oli', lastCompletedKm: 900, intervalDays: 30 } as MaintenanceRule;
@@ -14,8 +16,20 @@ const reminder = { id: 'r1', motorcycleId: 'm1', maintenanceRuleId: 'oil', repea
 
 beforeEach(() => {
   vi.resetAllMocks();
-  useAppStore.setState({ motorcycles: [motorcycle], maintenanceRules: [rule], reminders: [reminder], maintenanceLogs: [], odometerLogs: [], activeMotorcycleId: 'm1' });
+  useAppStore.setState({ motorcycles: [motorcycle], maintenanceRules: [rule], reminders: [reminder], maintenanceLogs: [], odometerLogs: [], activeMotorcycleId: 'm1', preferences: { themeMode: 'system', useMotorcycleAccent: true, oilReminders: {} } });
   vi.mocked(updateReminderWithIntegrations).mockImplementation(async (original, changes) => ({ ...original, ...changes }));
+  vi.mocked(cancelOilReminder).mockResolvedValue(undefined);
+  vi.mocked(cancelOilReminders).mockResolvedValue(undefined);
+});
+
+it('persists explicit oil opt-in and removes it only after native cancellation succeeds', async () => {
+  await useAppStore.getState().setOilReminderEnabled('oil', true);
+  expect(useAppStore.getState().preferences.oilReminders.oil).toEqual({ enabled: true });
+  vi.mocked(cancelOilReminder).mockRejectedValueOnce(new Error('Native unavailable'));
+  await expect(useAppStore.getState().setOilReminderEnabled('oil', false)).rejects.toThrow('Native unavailable');
+  expect(useAppStore.getState().preferences.oilReminders.oil?.enabled).toBe(true);
+  await useAppStore.getState().setOilReminderEnabled('oil', false);
+  expect(useAppStore.getState().preferences.oilReminders.oil).toBeUndefined();
 });
 
 it('cleans resources before deleting a motorcycle or resetting data, retaining records on failure', async () => {
@@ -26,6 +40,7 @@ it('cleans resources before deleting a motorcycle or resetting data, retaining r
   expect(useAppStore.getState().motorcycles).toHaveLength(1);
   vi.mocked(deleteRemindersWithIntegrations).mockResolvedValue(undefined);
   await useAppStore.getState().deleteMotorcycle('m1');
+  expect(cancelOilReminders).toHaveBeenCalledWith(['oil']);
   expect(deleteRemindersWithIntegrations).toHaveBeenCalledWith([reminder]);
   expect(useAppStore.getState().reminders).toHaveLength(0);
   expect(removeMotorcyclePhoto).toHaveBeenCalledWith(motorcycle.photoUri);

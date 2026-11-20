@@ -7,7 +7,7 @@ Motor Care adalah aplikasi mobile personal untuk membantu pemilik motor memantau
 - Platform utama: Android
 - Tipe aplikasi: React Native client-side MVP
 - Bahasa UI: Bahasa Indonesia terlebih dahulu, siap dilokalkan
-- Tema: Material Design 3 dengan default biru dan aksen dinamis per motor
+- Tema: permukaan off-white/ink dengan default teal dan aksen dinamis per motor
 - Penyimpanan: lokal di perangkat
 - Backend: tidak ada
 - Login dan akun: tidak ada
@@ -23,6 +23,7 @@ Motor Care adalah aplikasi mobile personal untuk membantu pemilik motor memantau
 - Nickname, tipe, warna, foto lokal, detail motor, dan odometer saat ini
 - Riwayat perubahan odometer
 - Tema aksen mengikuti motor aktif
+- Pratinjau 3D generik untuk motor sport, dimuat saat dibuka dan dapat diputar lewat tombol. Model lokal ini bukan replika merek/model tertentu dan tidak memakai animasi terus-menerus.
 
 ### Perawatan
 
@@ -48,6 +49,7 @@ Motor Care adalah aplikasi mobile personal untuk membantu pemilik motor memantau
 - Home dashboard dengan motor aktif, odometer, status maintenance, aksi cepat, dan aktivitas terbaru
 - Bottom navigation: Home, Garage, Perawatan, Pengaturan
 - Light mode dan dark mode
+- Layout responsif, highlight tonal pada motor aktif dan status perawatan, serta transisi tab yang mengikuti preferensi reduced motion
 - Empty state dan feedback untuk alur penting
 - Dukungan offline
 - Tidak menggunakan AI atau klaim rekomendasi pintar
@@ -207,6 +209,8 @@ Konfigurasi Expo memakai `expo-splash-screen`. Aset launcher/splash juga sudah d
 
 ## Perilaku Reminder
 
+- Pengingat oli otomatis bersifat opt-in per jadwal oli dan meminta izin hanya saat pengguna mengaktifkannya. Tanggal jatuh tempo dijadwalkan sebagai notifikasi lokal; batas kilometer diperiksa saat odometer dicatat di aplikasi, tanpa menebak jarak tempuh di latar belakang.
+- Satu siklus servis hanya menghasilkan satu notifikasi otomatis. Mengubah interval atau mencatat ganti oli menyinkronkan ulang jadwal; menonaktifkan fitur, menghapus motor, atau mereset data membatalkan jadwal native terkait. Status izin dan kegagalan sinkronisasi ditampilkan apa adanya.
 - Notifikasi harian/mingguan/bulanan/tahunan mengikuti komponen tanggal dan jam lokal perangkat, bukan timer 24 jam sejak menekan Simpan. Android dapat menunda pengiriman akibat kebijakan baterai/OS; aplikasi ini bukan alarm presisi.
 - Trigger native berulang tidak menyediakan tanggal mulai tertunda. Jika kecocokan berikutnya terjadi sebelum tanggal yang dipilih, aplikasi menolak integrasi notifikasinya dengan penjelasan, menyimpan pengingat lokal, dan tidak mengirim terlalu awal. Gunakan waktu mulai terdekat, reminder satu kali, atau kalender untuk mulai jauh di masa depan.
 - Notifikasi bulanan mendukung tanggal 1-28. Notifikasi tahunan tidak memakai 29 Februari. Notifikasi custom belum didukung. Kalender mendukung pengulangan sesuai tanggal awal; interval custom tersimpan diartikan dalam hari.

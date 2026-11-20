@@ -1,8 +1,16 @@
 # Motor Care Design System
 
+## 0. Revamp inputs & decisions
+
+- Existing architecture stays intact: Expo Router, React Native Paper, MaterialCommunityIcons, Zustand, dynamic motorcycle accent, and the current store/service flows.
+- UI/UX Pro Max queries run: `motorcycle maintenance dashboard clean lightweight Indonesian` and the narrower `personal motorcycle care off-white ink teal` design-system query, plus `responsive maintenance dashboard accessibility touch targets --stack react-native`. Adopted: minimal/Swiss hierarchy, semantic Pressables, visible states, reduced motion, responsive reflow, and 48px targets. Rejected: new web fonts, marketing-page sections, dark-only/OLED direction, decorative charts, and extra red/green brand accents.
+- StyleGallery pattern: [`main-with-rail`](https://github.com/changeroa/StyleGallery/blob/main/patterns/split-sidebar/main-with-rail.md) for the wide dashboard. The primary task remains first in reading order, the rail reflows below it, and `Screen` remains the only page scroll owner.
+- Visual direction: warm workshop paper rather than cold dashboard chrome. Off-white canvas, near-black green ink, quiet mineral surfaces, and one accent: the active motorcycle color with restrained teal fallback.
+- Primary persona: an everyday Indonesian rider checking the next maintenance action in under a minute. Situational constraints include one-handed use, outdoor glare, limited mechanical knowledge, large text, and reduced motion.
+
 ## 1. Atmosphere & Identity
 
-Motor Care is a calm, friendly maintenance dashboard: useful before decorative, reassuring without hiding uncertainty, and direct about the next action. Its signature is the motorcycle-colored accent applied to quiet blue-gray surfaces, with service health communicated through concise status rows rather than alarm-heavy decoration. The primary persona is an everyday rider checking the app quickly before or after a ride; secondary contexts include one-handed use, bright outdoor light, reduced motion, and limited mechanical knowledge.
+Motor Care is a calm maintenance companion: useful before decorative, reassuring without hiding uncertainty, and direct about the next action. Its signature is a warm paper-like canvas, ink-forward typography, softly grouped surfaces, and the active motorcycle accent used only where action or selection needs it. The dashboard opens with the rider's motorcycle and oil priority, not generic metrics. Service health stays explicit in Indonesian text rather than relying on alarm-heavy decoration.
 
 ## 2. Color
 
@@ -10,46 +18,49 @@ Colors are supplied through the React Native Paper theme in `src/theme/theme.ts`
 
 | Role | Token / source | Light | Dark | Usage |
 | --- | --- | --- | --- | --- |
-| Accent | `primary` | Dynamic, fallback `#2563EB` | Dynamic, contrast-adjusted | Primary actions, active navigation, progress |
+| Accent | `primary` | Dynamic, fallback `#0F766E` | Dynamic, contrast-adjusted | Primary actions, active navigation, progress |
 | Accent surface | `primaryContainer` | Dynamic pale tint | Dynamic deep tint | Icon wells, selected controls |
-| Page | `background` | `#F4F6F9` | `#0D131D` | Screen background |
-| Surface | `surface` | `#FFFFFF` | `#18212E` | Cards, sheets, bottom navigation |
-| Surface muted | `surfaceVariant` | `#E9EEF5` | `#253142` | Tracks, secondary icon wells |
-| Text | `onSurface` | `#172033` | `#F1F5F9` | Titles and body |
-| Text muted | `onSurfaceVariant` | `#526077` | `#BAC5D4` | Metadata and hints |
-| Border | `outlineVariant` | `#DFE5ED` | `#2C3A4D` | Card and divider edges |
+| Page | `background` | `#F5F3EE` | `#101614` | Screen background |
+| Surface | `surface` | `#FFFDF8` | `#18201D` | Cards, sheets, bottom navigation |
+| Surface muted | `surfaceVariant` | `#ECE9E1` | `#25302C` | Tracks, secondary icon wells, selected neutral rows |
+| Text | `onSurface` | `#18201F` | `#F4F3ED` | Titles and body |
+| Text muted | `onSurfaceVariant` | `#596561` | `#B9C2BE` | Metadata and hints |
+| Border strong | `outline` | `#74807B` | `#84918C` | Controls that need visible boundaries |
+| Border subtle | `outlineVariant` | `#DCD8CE` | `#33403B` | Card and divider edges |
 | Status good | `status.good` | `#166534` | `#86EFAC` | Tracked schedule in range |
-| Status soon | `status.soon` | `#854D0E` | `#FDE68A` | Near due |
-| Status due | `status.due` | `#9A3412` | `#FDBA74` | Due now |
+| Status soon | `status.soon` | `#7C4A03` | `#FDE68A` | Near due |
+| Status due | `status.due` | `#9A3412` | `#FDBA74` | Due now and primary next action |
 | Status overdue | `status.overdue` | `#991B1B` | `#FCA5A5` | Overdue |
 | Status unknown | `onSurfaceVariant` | Theme value | Theme value | Missing baseline; never use success green |
 | Scrim | `backdrop` | `rgba(4, 9, 18, 0.52)` | Same | Modal backdrop |
 
 Rules:
 - Accent is reserved for actions, selection, and measured progress.
+- Teal is the fallback identity, not a second accent when a motorcycle color is active.
+- Selected rows use tonal fill plus a check glyph, never a colored outline.
 - Missing maintenance history is neutral and action-oriented, never green or labelled safe.
 - Error and overdue colors do not replace explanatory text.
 
 ## 3. Typography
 
-React Native Paper's Material 3 system font is the only family. Numeric values use locale formatting and stable alignment within their row.
+React Native Paper's Material 3 system font is the only family; no font dependency is added. Hierarchy comes from size, weight, line height, and whitespace. Numeric values use Indonesian locale formatting and stable alignment within their row.
 
 | Level | Paper variant | Size / line height | Weight | Usage |
 | --- | --- | --- | --- | --- |
-| Display | `displaySmall` | 36 / 44 | 800 override | Odometer focal value |
-| Page title | `headlineSmall` | 24 / 32 | 700 override | Screen title |
-| Card title | `titleMedium` | 16 / 24 | 700 override | Cards and sections |
+| Display | `displaySmall` | 40 / 48 | 700 override | Odometer focal value |
+| Page title | `headlineSmall` | 28 / 36 | 700 override | Screen title |
+| Card title | `titleMedium` | 17 / 24 | 700 override | Cards and sections |
 | Supporting title | `titleSmall` | 14 / 20 | 600-700 override | Compact summaries |
-| Body | `bodyMedium` | 14 / 20 | 400 | Explanations |
+| Body | `bodyMedium` | 15 / 22 | 400 | Explanations |
 | Metadata | `bodySmall` | 12 / 16 | 400 | Dates, kilometer values, sources |
-| Action | `labelLarge` | 14 / 20 | 500-700 | Buttons and quick actions |
+| Action | `labelLarge` | 14 / 20 | 600 | Buttons and quick actions |
 | Eyebrow | `labelSmall` / `labelMedium` | 11-12 / 16 | 600-700 | Short uppercase context labels |
 
 Sentence case is the default. Uppercase is limited to short eyebrow labels with positive tracking. Indonesian copy must remain plain and specific.
 
 ## 4. Spacing & Layout
 
-The base unit is **4px**. Existing visual values map to this scale.
+The base unit is **4px**. Shared values live in `src/theme/theme.ts` as `SPACING`, `RADII`, and `LAYOUT`; screen styles compose those constants rather than creating a second styling system.
 
 | Token | Value | Usage |
 | --- | --- | --- |
@@ -57,31 +68,50 @@ The base unit is **4px**. Existing visual values map to this scale.
 | `space-2` | 8 | Metadata gaps, compact controls |
 | `space-3` | 12 | Card rows and list gaps |
 | `space-4` | 16 | Default card padding and control gaps |
-| `space-5` | 20 | Page gutter and featured-card padding |
+| `space-5` | 20 | Compact page gutter and featured-card padding |
 | `space-6` | 24 | Major card content and headings |
 | `space-7` | 28 | Section heading offset |
-| `space-8` | 32 | Major section separation |
+| `space-8` | 32 | Wide page gutter and major section separation |
 | `space-12` | 48 | Screen bottom breathing room and control minimum |
 
-- Scroll ownership belongs to `Screen`; sheets and detail forms own their nested scroll views.
-- Page content is a single readable column, 20px mobile gutters, maximum width 640px, centered at tablet/desktop widths.
+- Scroll ownership belongs to `Screen`; sheets and fixed detail forms own their explicitly bounded nested scroll views.
+- At 375px, content is one column with 20px gutters. At 768px, gutters become 32px and related summary groups may become two columns. At 1280px, content stops at 1120px and dashboard sections use a dominant main column plus a narrower rail.
+- Reading and focus order never changes when a visual group reflows. The main task stays before supplemental data in source order.
 - Flexible rows wrap rather than forcing horizontal overflow.
-- Touch targets are at least 44px; primary controls use 48px minimum height.
+- Every interactive target is at least 48px high and wide, or uses `hitSlop` to reach that area.
 - Kilometer fields format digits with Indonesian thousand separators while typing and parse them back to integers at the form boundary.
-- Corner radii: 8px status badges, 12px controls/icon wells, 16px compact surfaces, 20px cards, 24px sheet top corners.
+- Corner radii: 10px status badges, 14px controls/icon wells, 18px compact surfaces, 24px cards, 28px featured surfaces and sheet top corners.
 
 ## 5. Components
 
 ### Screen
-- **Structure**: safe area -> animated content wrapper -> optional scroll view -> centered content column.
+- **Structure**: safe area -> animated content wrapper -> optional scroll view -> responsive centered content column.
 - **States**: scrolling or fixed; reduced motion removes entry translation.
 - **Accessibility**: keyboard insets and handled taps remain enabled.
 
+### Screen header
+- **Structure**: 48px semantic icon well -> title and one-line purpose statement.
+- **States**: wraps safely at large text sizes; no decorative action is placed in the title row.
+- **Usage**: shared by dashboard, garage, maintenance, and settings to create a stable entry point.
+
 ### Surface card
-- **Structure**: semantic content inside a `surface` background, `outlineVariant` border, and shared card shadow.
-- **Variants**: standard 16px inset, featured 20px inset, compact statistic.
+- **Structure**: semantic content inside a `surface` background with a subtle `outlineVariant` edge. The shared shadow is restrained and limited to grouped or actionable surfaces.
+- **Variants**: standard 16px inset, featured 20-24px inset, compact statistic, and tonal selected state.
 - **States**: default and pressed opacity for interactive cards.
 - **Accessibility**: interactive cards expose button role and a descriptive label.
+
+### Motorcycle card
+- **Active state**: the whole card uses `primaryContainer`; title, supporting copy, and the persistent check treatment use `onPrimaryContainer` without a colored state border or geometry change.
+- **Inactive state**: the standard `surface` and neutral ink roles remain unchanged.
+
+### Section title
+- **Structure**: sentence-case heading with optional short supporting copy or real action.
+- **Rule**: an action label is never rendered as inert text; actions use a 48px semantic control.
+
+### Empty state
+- **Structure**: context icon -> direct Indonesian title -> one useful explanation -> optional primary action.
+- **Variants**: garage, maintenance, reminder, activity, and filter-result icons.
+- **Copy**: explains what will appear and the next available step; no generic error or celebratory language.
 
 ### Motorcycle color picker
 - **Structure**: named color choices wrap into a two-column list inside a shared surface card.
@@ -94,22 +124,33 @@ The base unit is **4px**. Existing visual values map to this scale.
 - **Storage**: image files stay in the app's document directory; persisted motorcycle data stores only the local file URI.
 - **Accessibility**: actions have visible labels and the selected photo has an image label.
 
+### Sport motorcycle preview
+- **Structure**: collaborator-owned `SportMotorcyclePreview` with `color: string`, shown on Home only when `motorcycle.type === 'sport'`.
+- **Label**: visible copy says the object is an illustrative generic 3D motorcycle, not an exact branded model.
+- **Behavior**: local low-poly faces load on demand at a three-quarter angle and move only through explicit rotate controls; the preview never replaces the motorcycle selector, photo, or any maintenance action.
+
 ### Maintenance card
 - **Structure**: maintenance identity -> status/summary -> zero, one, or two labelled progress tracks -> last-service metadata.
 - **Variants**: tracked distance, tracked time, combined, and untracked baseline.
-- **States**: good, soon, due, overdue, untracked. Untracked has no success badge or fabricated progress.
+- **States**: good, soon, due, overdue, untracked. Due and overdue use a subtle whole-surface status wash plus matching icon, summary, and status text; their edge stays `outlineVariant`. Untracked stays neutral with no success badge or fabricated progress.
 - **Accessibility**: non-interactive cards expose each track as a progressbar. Interactive cards announce status, progress, service baseline, and the detail action as one button to avoid nested widgets; visible labels keep every card understandable without color.
 - **Schedule baseline**: create/edit and service logging accept a prior-service date for every maintenance type; prior odometer is optional and independently enables distance tracking.
 
 ### Oil focus section
-- **Structure**: section heading -> engine-oil maintenance card -> primary log action and secondary interval action.
+- **Structure**: priority heading -> engine-oil maintenance card -> primary log action -> collaborator-owned `OilReminderControl` with `ruleId: string` -> secondary interval action.
 - **States**: tracked and untracked use the maintenance-card contract; absent rule provides a neutral route to add a schedule.
-- **Accessibility**: actions name oil explicitly and route to the existing maintenance log and interval-edit flows.
+- **Accessibility**: actions name oil explicitly and route to the existing maintenance log and interval-edit flows. Reminder controls stay next to the oil context, not in app settings.
+
+### Tab screen composition
+- **Home**: motorcycle selector -> oil priority -> optional sport preview -> odometer and quick context -> attention -> recent activity. On wide layouts, odometer/context becomes the rail without changing reading order.
+- **Garage**: collection summary -> responsive motorcycle grid -> persistent add action. Empty state explains why adding a motorcycle unlocks the app.
+- **Maintenance**: active motorcycle summary -> accessible filter controls -> schedules -> reminders. Empty results name the selected category and offer the relevant next step.
+- **Settings**: appearance, notifications/privacy, and destructive data action are separate groups. Notification status remains readable and links to device settings; reset remains confirmation-gated.
 
 ### Bottom tabs and swipe canvas
-- **Structure**: existing accessible bottom tabs remain the explicit control; the full tab-content canvas also accepts deliberate horizontal swipes.
-- **States**: swipe left/right, first/last boundary, vertical-scroll rejection, input/keyboard suppression, reduced-motion route transition.
-- **Accessibility**: no gesture-only destination; every route remains labelled and reachable through the bottom tab bar. Taps and vertical scrolling win unless horizontal intent crosses the threshold.
+- **Structure**: headless Expo Router `Tabs` keep all four descriptor-owned pages mounted once in an absolute swipe canvas; each page translates by `(index - position) * width`. The accessible bottom tab list remains the explicit control.
+- **States**: finger-tracked neighbor peek, cancelled snap-back, one-tab commit, first/last boundary, vertical-scroll rejection, input/keyboard suppression, tab-press interruption, orientation resize, and reduced-motion direct settle.
+- **Accessibility**: no gesture-only destination; every route remains labelled and reachable through the bottom tab bar. Only the committed page accepts pointers or native accessibility focus; inactive web pages are `aria-hidden` and inert. Taps and vertical scrolling win unless horizontal intent crosses the recognition threshold.
 - **Interaction source**: adapted from beui.dev `tabs`: navigation state changes stay interruptible, the selected tab remains explicit, and reduced motion disables spatial route animation.
 
 ### Sheet
@@ -123,34 +164,37 @@ The base unit is **4px**. Existing visual values map to this scale.
 | Token | Duration | Usage |
 | --- | --- | --- |
 | `motion-press` | Immediate opacity feedback | Pressables |
-| `motion-tab` | Router `shift` transition | Tab change |
+| `motion-tab` | Interruptible spring: stiffness 260, damping 24, mass 0.85, no overshoot | Tab snap after release or tab press |
 | `motion-entry` | 260ms | Screen/card entry |
 | `motion-sheet-open` | 300ms ease-out | Sheet entrance |
 | `motion-sheet-close` | 220ms ease-in | Sheet exit |
 
-- Horizontal navigation activates only after a deliberate 64px movement and fails when vertical travel exceeds 24px.
-- Swipes move exactly one tab and never wrap at the first or last tab.
+- Horizontal tracking activates after 10px and fails when vertical travel wins at 12px, so a 25-50px drag visibly reveals the real neighboring page before release.
+- A release commits at the smaller of 18% page width or 64px, or at 500px/s horizontal velocity after recognition. Short slow drags snap back; commits move exactly one tab and never wrap.
 - The pan detector allows taps and vertical scrolling to win before horizontal activation; it is disabled while the keyboard is open so form editing is not interpreted as navigation. Portal dialogs and sheets sit outside the tab canvas.
-- Spatial motion uses transforms; opacity is used for press feedback. Reduced-motion preference removes route and entrance movement.
+- During tracking and settling, one pointerless `expo-blur` overlay at intensity 8 is clipped to the revealed incoming edge and clears completely at rest; it never covers the tab bar. Android uses SDK 54's `dimezisBlurView` method rather than an opacity imitation.
+- Spatial motion uses transforms; opacity and Paper ripple provide press feedback without changing layout bounds. Reduced-motion preference keeps direct finger control but removes settling motion and blur, and also removes route, entrance, sheet, and any sport-preview movement.
+- No decorative auto-rotation, pulsing status, or ambient animation. The interface is useful in its final static state.
 
 ## 7. Depth & Surface
 
-Strategy: **mixed soft border plus restrained shadow**. Cards use a 1px `outlineVariant` edge and the shared `CARD_SHADOW` (`elevation: 2`, web shadow `0 4px 16px rgba(0,0,0,0.10)`). Hierarchy comes primarily from the page/surface tonal shift; shadow is limited to actionable or grouped surfaces. Tracks and icon wells use `surfaceVariant` without extra shadow.
+Strategy: **warm tonal layering plus restrained depth**. Cards use a 1px `outlineVariant` edge and shared `CARD_SHADOW` (`elevation: 1`, web shadow `0 8px 24px rgba(31,41,37,0.08)`). Hierarchy comes primarily from page/surface tonal shift and spacing; shadow is limited to actionable or grouped surfaces. Tracks and icon wells use `surfaceVariant` without shadow. Selected state is a tonal wash plus glyph, never an accent border.
 
 ## 8. Accessibility Constraints & Accepted Debt
 
 ### Constraints
 - Target WCAG 2.2 AA: 4.5:1 body contrast, 3:1 large text and non-text controls.
+- Test light and dark themes independently; dynamic motorcycle accents are contrast-adjusted before becoming Paper roles.
+- Controls retain 48px targets, clear labels, and visible selected/checked state at large text sizes.
 - Status is always communicated with text, not color alone.
 - Bottom tabs remain visible and operable; swiping is an enhancement, not the sole navigation method.
 - Vertical scrolling, taps, controls, keyboard input, sheets, and dialogs take precedence over tab swipes.
 - System reduced-motion preference is respected for screen, card, sheet, and tab transitions.
 - Copy must not imply a schedule is healthy until a real completion date or odometer baseline exists.
+- Indonesian copy uses short active sentences, avoids jargon where a plain term exists, and never claims a generic 3D preview is an exact motorcycle model.
 
 ### Accepted Debt
 
 | Item | Location | Why accepted | Owner / Exit |
 | --- | --- | --- | --- |
-| Paper uses the platform system font | App-wide | Avoids adding a font dependency and preserves native rendering | Revisit only with a full brand/type project |
-| Existing screens contain a few direct visual literals | Legacy UI | This task changes only oil and swipe surfaces; broad consolidation is out of scope | Consolidate when each legacy screen is next edited |
-| No dedicated primitive showcase route | App-wide | Shared primitives already render across live screens; this change verifies them through the real app at 375/768/1280 | Add only if component development becomes independent of product screens |
+| No dedicated primitive showcase route | App-wide | Shared primitives render across all four live tabs and are verified there at 375/768/1280 | Add only if component development becomes independent of product screens |

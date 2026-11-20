@@ -4,10 +4,22 @@ import type { Reminder } from '@/src/domain/types';
 
 const channelId = 'maintenance-reminders';
 
-export async function notificationPermissionLabel(): Promise<string> {
-  if (Platform.OS === 'web') return 'Tidak tersedia di web';
+export type NotificationPermissionStatus = {
+  kind: 'unsupported' | 'granted' | 'prompt' | 'blocked';
+  label: string;
+};
+
+export async function notificationPermissionStatus(): Promise<NotificationPermissionStatus> {
+  if (Platform.OS === 'web') return { kind: 'unsupported', label: 'Tidak tersedia di web' };
   const permission = await Notifications.getPermissionsAsync();
-  return permission.granted || permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL ? 'Diizinkan' : permission.canAskAgain ? 'Belum diizinkan' : 'Diblokir di pengaturan perangkat';
+  if (permission.granted || permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) return { kind: 'granted', label: 'Diizinkan' };
+  return permission.canAskAgain
+    ? { kind: 'prompt', label: 'Belum diizinkan' }
+    : { kind: 'blocked', label: 'Diblokir di pengaturan perangkat' };
+}
+
+export async function notificationPermissionLabel(): Promise<string> {
+  return (await notificationPermissionStatus()).label;
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {

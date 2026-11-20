@@ -18,7 +18,7 @@ describe('UI presentation', () => {
     for (const accent of ['#DC2626', '#2563EB', '#FFFFFF', '#000000', '#FFFF00', 'invalid']) {
       for (const dark of [true, false]) {
         const palette = accentColors(accent, dark);
-        for (const [foreground, background] of [[palette.primary, dark ? '#18212E' : '#FFFFFF'], [palette.onPrimary, palette.primary], [palette.onPrimaryContainer, palette.primaryContainer]]) {
+        for (const [foreground, background] of [[palette.primary, dark ? '#18201D' : '#FFFDF8'], [palette.onPrimary, palette.primary], [palette.onPrimaryContainer, palette.primaryContainer]]) {
           expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5);
         }
       }

@@ -103,9 +103,17 @@ export interface Reminder {
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
+export type OilReminderPreference = {
+  enabled: boolean;
+  cycle?: string;
+  delivery?: 'scheduled' | 'time' | 'distance';
+  error?: string;
+};
+
 export interface UserPreferences {
   themeMode: ThemeMode;
   useMotorcycleAccent: boolean;
+  oilReminders: Record<string, OilReminderPreference>;
 }
 
 export interface MaintenanceStatusResult {

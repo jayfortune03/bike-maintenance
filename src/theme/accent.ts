@@ -1,5 +1,5 @@
 export function accentColors(accent: string, dark: boolean) {
-  const hex = /^#[0-9a-f]{6}$/i.test(accent) ? accent : '#2563EB';
+  const hex = /^#[0-9a-f]{6}$/i.test(accent) ? accent : '#0F766E';
   const rgb = [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16));
   const mix = (target: number, amount: number) => rgb.map((value) => Math.round(value + (target - value) * amount));
   const luminance = (channels: number[]) => channels.reduce((sum, value, index) => {
@@ -15,17 +15,17 @@ export function accentColors(accent: string, dark: boolean) {
   }
   return {
     primary: encode(primary),
-    onPrimary: dark ? '#111827' : '#FFFFFF',
+    onPrimary: dark ? '#101614' : '#FFFFFF',
     primaryContainer: encode(mix(dark ? 0 : 255, dark ? 0.8 : 0.92)),
     onPrimaryContainer: dark ? encode(mix(255, 0.8)) : encode(mix(0, 0.65)),
   };
 }
 
 export function contrastTextColor(color: string): string {
-  const hex = /^#[0-9a-f]{6}$/i.test(color) ? color : '#2563EB';
+  const hex = /^#[0-9a-f]{6}$/i.test(color) ? color : '#0F766E';
   const luminance = [1, 3, 5].reduce((sum, offset, index) => {
     const channel = parseInt(hex.slice(offset, offset + 2), 16) / 255;
     return sum + (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4) * [0.2126, 0.7152, 0.0722][index];
   }, 0);
-  return luminance > 0.24 ? '#172033' : '#FFFFFF';
+  return luminance > 0.24 ? '#18201F' : '#FFFFFF';
 }

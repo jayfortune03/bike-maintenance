@@ -1,23 +1,28 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
-import { Screen } from '@/src/components/Screen';
 import { EmptyState } from '@/src/components/EmptyState';
-import { SectionTitle } from '@/src/components/SectionTitle';
-import { MotorcycleSelector } from '@/src/components/MotorcycleSelector';
-import { MotorcyclePickerModal } from '@/src/components/MotorcyclePickerModal';
-import { OdometerDialog } from '@/src/components/OdometerDialog';
 import { MaintenanceCard } from '@/src/components/MaintenanceCard';
+import { MotorcyclePickerModal } from '@/src/components/MotorcyclePickerModal';
+import { MotorcycleSelector } from '@/src/components/MotorcycleSelector';
+import { OdometerDialog } from '@/src/components/OdometerDialog';
+import { OilReminderControl } from '@/src/components/OilReminderControl';
+import { Screen } from '@/src/components/Screen';
+import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { SectionTitle } from '@/src/components/SectionTitle';
+import { SportMotorcyclePreview } from '@/src/components/SportMotorcyclePreview';
 import { buildMaintenanceCardModel } from '@/src/components/maintenance-card-model';
 import { selectActiveMotorcycle, useAppStore } from '@/src/store/app.store';
-import { CARD_SHADOW } from '@/src/theme/theme';
+import { CARD_SHADOW, LAYOUT, RADII, SPACING } from '@/src/theme/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= LAYOUT.wideBreakpoint;
   const motorcycles = useAppStore((state) => state.motorcycles);
   const activeId = useAppStore((state) => state.activeMotorcycleId);
   const motorcycle = useAppStore(selectActiveMotorcycle);
@@ -38,54 +43,131 @@ export default function HomeScreen() {
   const surface = [styles.surface, CARD_SHADOW, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }];
   const muted = { color: theme.colors.onSurfaceVariant };
 
-  if (!motorcycle) return <Screen>
-    <View style={styles.header}><View style={[styles.headerIcon, { backgroundColor: theme.colors.primaryContainer }]}><MaterialCommunityIcons name="motorbike" size={24} color={theme.colors.onPrimaryContainer} /></View><View style={styles.copy}><Text accessibilityRole="header" variant="headlineSmall" style={styles.title}>Motor Care</Text><Text variant="bodyMedium" style={muted}>Rawat motor tanpa lupa.</Text></View></View>
-    <View style={surface}><EmptyState title="Mulai dari motor Anda" description="Catat kilometer, jadwal servis, dan pengingat dalam satu tempat." action="Tambah motor pertama" onPress={() => router.push('/motorcycle/add')} /></View>
-  </Screen>;
+  if (!motorcycle) {
+    return (
+      <Screen>
+        <ScreenHeader icon="motorbike" title="Motor Care" description="Catatan perawatan yang mudah dibaca." />
+        <View style={surface}>
+          <EmptyState
+            title="Tambahkan motor pertama"
+            description="Setelah itu, kamu bisa mencatat kilometer, jadwal servis, dan pengingat di satu tempat."
+            action="Tambah motor"
+            onPress={() => router.push('/motorcycle/add')}
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  const health = attention.length > 0
+    ? { icon: 'alert-circle-outline' as const, title: `${attention.length} perawatan perlu dicek`, detail: 'Buka detail untuk melihat batas jarak atau waktunya.' }
+    : untrackedCount > 0
+      ? { icon: 'clipboard-text-clock-outline' as const, title: 'Lengkapi riwayat perawatan', detail: `${untrackedCount} jadwal belum memiliki catatan awal.` }
+      : { icon: 'check-circle-outline' as const, title: 'Tidak ada jadwal mendesak', detail: 'Semua jadwal yang terlacak masih dalam batas.' };
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <View style={styles.copy}><Text accessibilityRole="header" variant="headlineSmall" style={styles.title}>Ringkasan</Text><Text variant="bodyMedium" style={[muted, styles.subtitle]}>Perjalanan nyaman, perawatan terencana.</Text></View>
-        <View style={[styles.headerIcon, { backgroundColor: theme.colors.primaryContainer }]}><MaterialCommunityIcons name="view-dashboard-outline" size={24} color={theme.colors.onPrimaryContainer} /></View>
-      </View>
+      <ScreenHeader icon="view-dashboard-outline" title="Ringkasan" description="Lihat yang perlu dilakukan sebelum berkendara lagi." />
       <MotorcycleSelector motorcycle={motorcycle} onPress={() => setPickerVisible(true)} />
-      {oilRule ? <><SectionTitle>Oli mesin</SectionTitle>
-        <MaintenanceCard rule={oilRule} currentOdometer={motorcycle.currentOdometer} onPress={() => router.push(`/maintenance/${oilRule.id}`)} />
-        <View style={styles.oilActions}><Button icon="oil" mode="contained" onPress={() => router.push(`/maintenance/${oilRule.id}?action=log`)} contentStyle={styles.button} style={styles.oilPrimary}>Catat ganti oli</Button><Button icon="tune-variant" mode="outlined" onPress={() => router.push(`/maintenance/edit?id=${oilRule.id}`)} contentStyle={styles.button} style={styles.oilSecondary}>Atur interval</Button></View>
-      </> : null}
-      <View style={[surface, styles.hero]}>
-        <View style={styles.heroTop}><Text variant="labelMedium" style={[muted, styles.eyebrow]}>ODOMETER SAAT INI</Text><MaterialCommunityIcons name="speedometer" size={24} color={theme.colors.primary} /></View>
-        <View style={styles.reading}><Text variant="displaySmall" style={styles.odometer}>{motorcycle.currentOdometer.toLocaleString('id-ID')}</Text><Text variant="titleMedium" style={muted}>km</Text></View>
-        <Text variant="bodyMedium" style={muted}>Catat kilometer terbaru setelah berkendara.</Text>
-        <Button icon="plus" mode="contained" onPress={() => setOdometerVisible(true)} contentStyle={styles.button} style={styles.heroButton}>Update odometer</Button>
+
+      <SectionTitle description="Selesaikan atau atur pengingatnya dari sini.">Prioritas berikutnya</SectionTitle>
+      {oilRule ? (
+        <View style={styles.oilStack}>
+          <MaintenanceCard rule={oilRule} currentOdometer={motorcycle.currentOdometer} onPress={() => router.push(`/maintenance/${oilRule.id}`)} />
+          <Button icon="oil" mode="contained" onPress={() => router.push(`/maintenance/${oilRule.id}?action=log`)} contentStyle={styles.button}>Catat ganti oli</Button>
+          <OilReminderControl ruleId={oilRule.id} />
+          <Button icon="tune-variant" mode="outlined" onPress={() => router.push(`/maintenance/edit?id=${oilRule.id}`)} contentStyle={styles.button}>Atur interval</Button>
+        </View>
+      ) : (
+        <View style={surface}>
+          <EmptyState icon="oil" title="Jadwal oli belum ada" description="Form berikut membuat jadwal perawatan custom, bukan jadwal oli bawaan." action="Tambah jadwal perawatan" onPress={() => router.push('/maintenance/custom')} />
+        </View>
+      )}
+
+      {motorcycle.type === 'sport' ? (
+        <>
+          <SectionTitle>Motor sport kamu</SectionTitle>
+          <SportMotorcyclePreview color={motorcycle.themeColor} />
+        </>
+      ) : null}
+
+      <View style={[styles.dashboardGrid, wide && styles.dashboardGridWide]}>
+        <View style={[surface, styles.odometerCard]}>
+          <View style={styles.cardHeading}>
+            <View style={styles.cardHeadingCopy}>
+              <Text variant="labelMedium" style={[muted, styles.eyebrow]}>ODOMETER SAAT INI</Text>
+              <View style={styles.reading}>
+                <Text variant="displaySmall" style={styles.odometerValue}>{motorcycle.currentOdometer.toLocaleString('id-ID')}</Text>
+                <Text variant="titleMedium" style={muted}>km</Text>
+              </View>
+            </View>
+            <View style={[styles.largeIcon, { backgroundColor: theme.colors.primaryContainer }]}>
+              <MaterialCommunityIcons name="speedometer" size={28} color={theme.colors.onPrimaryContainer} />
+            </View>
+          </View>
+          <Text variant="bodyMedium" style={muted}>Perbarui setelah berkendara agar jadwal berbasis kilometer tetap akurat.</Text>
+          <Button icon="plus" mode="contained" onPress={() => setOdometerVisible(true)} contentStyle={styles.button} style={styles.odometerButton}>Update odometer</Button>
+        </View>
+
+        <View style={styles.rail}>
+          <View style={[surface, styles.healthCard]}>
+            <View style={[styles.statusIcon, { backgroundColor: theme.colors.surfaceVariant }]}>
+              <MaterialCommunityIcons name={health.icon} size={24} color={attention.length ? theme.colors.tertiary : theme.colors.primary} />
+            </View>
+            <View style={styles.copy}>
+              <Text variant="titleSmall">{health.title}</Text>
+              <Text variant="bodySmall" style={[muted, styles.meta]}>{health.detail}</Text>
+            </View>
+          </View>
+          <View style={[surface, styles.stats]}>
+            {[
+              { value: rules.length, label: 'Jadwal aktif' },
+              { value: attention.length, label: 'Perlu dicek' },
+              { value: logs.length, label: 'Aktivitas' },
+            ].map((item, index) => (
+              <View key={item.label} style={[styles.stat, index > 0 && { borderTopColor: theme.colors.outlineVariant, borderTopWidth: 1 }]}>
+                <Text variant="titleLarge">{item.value}</Text>
+                <Text variant="bodySmall" style={muted}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
       </View>
-      <View style={styles.stats}>
-        {[{ value: rules.length, label: 'Jadwal aktif' }, { value: attention.length, label: 'Perlu dicek' }, { value: logs.length, label: 'Aktivitas' }].map((item) => <View key={item.label} style={[surface, styles.stat]}><Text variant="headlineSmall" style={styles.title}>{item.value}</Text><Text variant="bodySmall" style={muted}>{item.label}</Text></View>)}
-      </View>
-      {!attention.length && !untrackedCount ? <View style={[surface, styles.goodCard]}>
-        <View style={[styles.goodIcon, { backgroundColor: theme.dark ? '#16342C' : '#ECFDF3' }]}><MaterialCommunityIcons name="check-circle-outline" size={24} color={theme.dark ? '#86EFAC' : '#166534'} /></View>
-        <View style={styles.copy}><Text variant="titleSmall" style={styles.title}>Semua terlihat baik</Text><Text variant="bodyMedium" style={[muted, styles.subtitle]}>Belum ada perawatan yang mendesak.</Text></View>
-      </View> : !attention.length && untrackedCount ? <View style={[surface, styles.goodCard]}>
-        <View style={[styles.goodIcon, { backgroundColor: theme.colors.surfaceVariant }]}><MaterialCommunityIcons name="clipboard-text-clock-outline" size={24} color={theme.colors.onSurfaceVariant} /></View>
-        <View style={styles.copy}><Text variant="titleSmall" style={styles.title}>Lengkapi riwayat perawatan</Text><Text variant="bodyMedium" style={[muted, styles.subtitle]}>{untrackedCount} jadwal belum memiliki catatan awal.</Text></View>
-      </View> : null}
+
       <SectionTitle>Aksi cepat</SectionTitle>
-      <View style={styles.actions}>
+      <View style={styles.quickActions}>
         {[
           { label: 'Odometer', icon: 'speedometer' as const, action: () => setOdometerVisible(true) },
           { label: 'Pengingat', icon: 'bell-outline' as const, action: () => router.push('/reminder/create') },
           { label: 'Perawatan', icon: 'wrench-outline' as const, action: () => router.push('/(tabs)/maintenance') },
-        ].map((item) => <Pressable key={item.label} accessibilityRole="button" accessibilityLabel={item.label} onPress={item.action} style={({ pressed }) => [surface, styles.action, { opacity: pressed ? 0.7 : 1 }]}><View style={[styles.actionIcon, { backgroundColor: theme.colors.primaryContainer }]}><MaterialCommunityIcons name={item.icon} size={23} color={theme.colors.onPrimaryContainer} /></View><Text variant="labelLarge" style={styles.actionLabel}>{item.label}</Text></Pressable>)}
+        ].map((item) => (
+          <Pressable key={item.label} accessibilityRole="button" accessibilityLabel={item.label} onPress={item.action} style={({ pressed }) => [surface, styles.quickAction, { opacity: pressed ? 0.72 : 1 }]}>
+            <View style={[styles.actionIcon, { backgroundColor: theme.colors.primaryContainer }]}><MaterialCommunityIcons name={item.icon} size={22} color={theme.colors.onPrimaryContainer} /></View>
+            <Text variant="labelLarge" style={styles.actionLabel}>{item.label}</Text>
+          </Pressable>
+        ))}
       </View>
-      {otherAttention.length ? <><SectionTitle>Perlu perhatian</SectionTitle>{otherAttention.slice(0, 3).map((rule) => <MaintenanceCard key={rule.id} rule={rule} currentOdometer={motorcycle.currentOdometer} onPress={() => router.push(`/maintenance/${rule.id}`)} />)}<Button onPress={() => router.push('/(tabs)/maintenance')} contentStyle={styles.button}>Lihat semua perawatan</Button></> : null}
+
+      {otherAttention.length > 0 ? (
+        <>
+          <SectionTitle action="Lihat semua" onAction={() => router.push('/(tabs)/maintenance')}>Perlu perhatian</SectionTitle>
+          {otherAttention.slice(0, 3).map((rule) => <MaintenanceCard key={rule.id} rule={rule} currentOdometer={motorcycle.currentOdometer} onPress={() => router.push(`/maintenance/${rule.id}`)} />)}
+        </>
+      ) : null}
+
       <SectionTitle>Aktivitas terakhir</SectionTitle>
       <View style={surface}>
-        {logs.length ? logs.slice(-3).reverse().map((log, index) => <View key={log.id} style={[styles.log, index > 0 && { borderTopWidth: 1, borderTopColor: theme.colors.outlineVariant }]}>
-          <View style={[styles.logIcon, { backgroundColor: theme.colors.surfaceVariant }]}><MaterialCommunityIcons name="check" size={18} color={theme.colors.primary} /></View>
-          <View style={styles.copy}><Text variant="bodyMedium" style={styles.title}>{log.title}</Text><Text variant="bodySmall" style={[muted, styles.subtitle]}>{new Date(log.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}{log.odometer !== undefined ? ` / ${log.odometer.toLocaleString('id-ID')} km` : ''}</Text></View>
-        </View>) : <><Text variant="titleSmall" style={styles.title}>Belum ada aktivitas</Text><Text variant="bodyMedium" style={[muted, styles.subtitle]}>Riwayat akan muncul setelah Anda mencatat perawatan pertama.</Text></>}
+        {logs.length > 0 ? logs.slice(-3).reverse().map((log, index) => (
+          <View key={log.id} style={[styles.log, index > 0 && { borderTopWidth: 1, borderTopColor: theme.colors.outlineVariant }]}>
+            <View style={[styles.logIcon, { backgroundColor: theme.colors.surfaceVariant }]}><MaterialCommunityIcons name="check" size={18} color={theme.colors.primary} /></View>
+            <View style={styles.copy}>
+              <Text variant="bodyMedium">{log.title}</Text>
+              <Text variant="bodySmall" style={[muted, styles.meta]}>{new Date(log.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}{log.odometer !== undefined ? ` / ${log.odometer.toLocaleString('id-ID')} km` : ''}</Text>
+            </View>
+          </View>
+        )) : <EmptyState icon="history" title="Belum ada aktivitas" description="Riwayat akan muncul setelah kamu mencatat perawatan pertama." />}
       </View>
+
       <MotorcyclePickerModal visible={pickerVisible} motorcycles={motorcycles} activeId={activeId} onSelect={setActive} onAdd={() => router.push('/motorcycle/add')} onDismiss={() => setPickerVisible(false)} />
       <OdometerDialog motorcycle={motorcycle} visible={odometerVisible} onDismiss={() => setOdometerVisible(false)} onSave={(value) => updateOdometer(motorcycle.id, value)} />
     </Screen>
@@ -93,19 +175,30 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 24 },
-  headerIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  copy: { flex: 1, minWidth: 0 }, title: { fontWeight: '700' }, subtitle: { marginTop: 4, lineHeight: 21 },
-  surface: { borderWidth: 1, borderRadius: 20, padding: 16 },
-  oilActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, oilPrimary: { flexGrow: 1 }, oilSecondary: { flexGrow: 1 },
-  hero: { marginTop: 16, padding: 20 }, heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  eyebrow: { letterSpacing: 1, flexShrink: 1 }, reading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 8, marginTop: 16, marginBottom: 8 },
-  odometer: { fontWeight: '800', letterSpacing: -1 }, heroButton: { marginTop: 20 }, button: { minHeight: 48 },
-  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 }, stat: { flex: 1, minWidth: 88, padding: 12, gap: 6, borderRadius: 16 },
-  goodCard: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
-  goodIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, action: { flex: 1, minWidth: 88, alignItems: 'center', gap: 12, paddingHorizontal: 8, paddingVertical: 16, borderRadius: 16 },
-  actionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, actionLabel: { textAlign: 'center', flexShrink: 1 },
-  log: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  logIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  surface: { borderWidth: 1, borderRadius: RADII.card, padding: SPACING.lg },
+  copy: { flex: 1, minWidth: 0 },
+  meta: { marginTop: SPACING.xs },
+  oilStack: { gap: SPACING.md },
+  button: { minHeight: SPACING.touch },
+  dashboardGrid: { gap: SPACING.lg, marginTop: SPACING.xxl },
+  dashboardGridWide: { flexDirection: 'row', alignItems: 'stretch' },
+  odometerCard: { flex: 2, padding: SPACING.xxl, borderRadius: RADII.featured },
+  cardHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: SPACING.lg },
+  cardHeadingCopy: { flex: 1, minWidth: 0 },
+  eyebrow: { letterSpacing: 1 },
+  reading: { minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: SPACING.sm, marginTop: SPACING.md, marginBottom: SPACING.sm },
+  odometerValue: { flexShrink: 1 },
+  largeIcon: { flexShrink: 0, width: 56, height: 56, borderRadius: RADII.compact, alignItems: 'center', justifyContent: 'center' },
+  odometerButton: { marginTop: SPACING.xl, alignSelf: 'flex-start' },
+  rail: { flex: 1, minWidth: 0, gap: SPACING.md },
+  healthCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  statusIcon: { width: SPACING.touch, height: SPACING.touch, borderRadius: RADII.control, alignItems: 'center', justifyContent: 'center' },
+  stats: { paddingVertical: 0 },
+  stat: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.md, paddingVertical: SPACING.md },
+  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
+  quickAction: { flex: 1, minWidth: 96, minHeight: 104, alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, padding: SPACING.md, borderRadius: RADII.compact },
+  actionIcon: { width: SPACING.touch, height: SPACING.touch, borderRadius: RADII.control, alignItems: 'center', justifyContent: 'center' },
+  actionLabel: { textAlign: 'center', flexShrink: 1 },
+  log: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingVertical: SPACING.md },
+  logIcon: { width: 36, height: 36, borderRadius: RADII.badge, alignItems: 'center', justifyContent: 'center' },
 });

@@ -1,173 +1,88 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Button, Card, Text, useTheme } from 'react-native-paper';
+import { Button, Text, useTheme } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { Screen } from '@/src/components/Screen';
 import { EmptyState } from '@/src/components/EmptyState';
 import { MotorcycleCard } from '@/src/components/MotorcycleCard';
+import { Screen } from '@/src/components/Screen';
+import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { SectionTitle } from '@/src/components/SectionTitle';
 import { useAppStore } from '@/src/store/app.store';
-import { CARD_SHADOW } from '@/src/theme/theme';
+import { CARD_SHADOW, LAYOUT, RADII, SPACING } from '@/src/theme/theme';
 
 export default function GarageScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= LAYOUT.wideBreakpoint;
   const motorcycles = useAppStore((state) => state.motorcycles);
   const activeId = useAppStore((state) => state.activeMotorcycleId);
   const setActive = useAppStore((state) => state.setActiveMotorcycle);
-  const cardStyle = [
-    styles.card,
-    CARD_SHADOW,
-    {
-      backgroundColor: theme.colors.surface,
-      borderColor: theme.colors.outlineVariant,
-    },
-  ];
+  const surface = [styles.surface, CARD_SHADOW, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }];
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <View
-          style={[
-            styles.headerIcon,
-            { backgroundColor: theme.colors.primaryContainer },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="garage-variant"
-            size={24}
-            color={theme.colors.onPrimaryContainer}
-          />
-        </View>
-        <View style={styles.copy}>
-          <Text
-            variant="headlineSmall"
-            accessibilityRole="header"
-            style={styles.title}
-          >
-            Garage saya
-          </Text>
-          <Text
-            variant="bodyMedium"
-            style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
-          >
-            Semua motor, satu tempat untuk dirawat.
-          </Text>
-        </View>
-      </View>
+      <ScreenHeader icon="garage-variant" title="Garasi" description="Pilih motor aktif atau buka detail kendaraan." />
 
       {motorcycles.length > 0 ? (
         <>
-          <Card mode="outlined" style={cardStyle}>
-            <Card.Content style={styles.summary}>
-              <View style={styles.copy}>
-                <Text
-                  variant="labelMedium"
-                  style={{ color: theme.colors.onSurfaceVariant }}
-                >
-                  KOLEKSI MOTOR
-                </Text>
-                <Text variant="titleLarge" style={styles.countTitle}>
-                  {motorcycles.length} motor tersimpan
-                </Text>
+          <View style={[surface, styles.summary]}>
+            <View style={styles.summaryCopy}>
+              <Text variant="labelMedium" style={{ color: theme.colors.primary }}>KOLEKSI MOTOR</Text>
+              <Text variant="titleLarge" style={styles.summaryTitle}>{motorcycles.length} motor tersimpan</Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Motor aktif menentukan warna aksen dan jadwal yang ditampilkan.</Text>
+            </View>
+            <View style={[styles.summaryIcon, { backgroundColor: theme.colors.primaryContainer }]}>
+              <MaterialCommunityIcons name="motorbike" size={30} color={theme.colors.onPrimaryContainer} />
+            </View>
+          </View>
+
+          <SectionTitle description="Ketuk kartu untuk menjadikannya aktif dan melihat detail.">Motor saya</SectionTitle>
+          <View style={[styles.list, wide && styles.listWide]}>
+            {motorcycles.map((motorcycle, index) => (
+              <View key={motorcycle.id} style={[styles.item, wide && styles.itemWide]}>
+                <MotorcycleCard
+                  motorcycle={motorcycle}
+                  active={activeId === motorcycle.id}
+                  index={index}
+                  onPress={() => {
+                    setActive(motorcycle.id);
+                    router.push(`/motorcycle/${motorcycle.id}`);
+                  }}
+                />
               </View>
-              <MaterialCommunityIcons
-                name="motorbike"
-                size={32}
-                color={theme.colors.primary}
-              />
-            </Card.Content>
-          </Card>
-          <Text
-            variant="titleMedium"
-            accessibilityRole="header"
-            style={styles.sectionTitle}
-          >
-            Daftar motor
-          </Text>
-          {motorcycles.map((motorcycle) => (
-            <MotorcycleCard
-              key={motorcycle.id}
-              motorcycle={motorcycle}
-              active={activeId === motorcycle.id}
-              onPress={() => {
-                setActive(motorcycle.id);
-                router.push(`/motorcycle/${motorcycle.id}`);
-              }}
-            />
-          ))}
+            ))}
+          </View>
+
+          <Button icon="plus" mode="contained" onPress={() => router.push('/motorcycle/add')} contentStyle={styles.buttonContent} style={styles.add}>
+            Tambah motor
+          </Button>
         </>
       ) : (
-        <Card mode="outlined" style={cardStyle}>
-          <Card.Content>
-            <EmptyState
-              title="Garage masih kosong"
-              description="Tambahkan motor untuk mulai mencatat perawatan."
-            />
-          </Card.Content>
-        </Card>
+        <View style={surface}>
+          <EmptyState
+            icon="garage-open-variant"
+            title="Garasi masih kosong"
+            description="Tambahkan motor agar odometer, jadwal perawatan, dan pengingat bisa dicatat."
+            action="Tambah motor pertama"
+            onPress={() => router.push('/motorcycle/add')}
+          />
+        </View>
       )}
-
-      <Button
-        icon="plus"
-        mode="contained"
-        onPress={() => router.push('/motorcycle/add')}
-        contentStyle={styles.buttonContent}
-        style={styles.add}
-      >
-        Tambah motor
-      </Button>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 24,
-  },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  copy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  title: {
-    fontWeight: '700',
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    marginTop: 4,
-    lineHeight: 22,
-  },
-  card: {
-    borderRadius: 20,
-  },
-  summary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    paddingVertical: 24,
-  },
-  countTitle: {
-    fontWeight: '700',
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontWeight: '700',
-    marginTop: 32,
-    marginBottom: 16,
-  },
-  buttonContent: {
-    minHeight: 48,
-  },
-  add: {
-    marginTop: 16,
-  },
+  surface: { borderWidth: 1, borderRadius: RADII.card, padding: SPACING.lg },
+  summary: { minHeight: 152, flexDirection: 'row', alignItems: 'center', gap: SPACING.xl, padding: SPACING.xxl, borderRadius: RADII.featured },
+  summaryCopy: { flex: 1, minWidth: 0 },
+  summaryTitle: { marginTop: SPACING.sm, marginBottom: SPACING.xs },
+  summaryIcon: { width: 64, height: 64, borderRadius: RADII.card, alignItems: 'center', justifyContent: 'center' },
+  list: { width: '100%' },
+  listWide: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.lg },
+  item: { minWidth: 0 },
+  itemWide: { flexGrow: 1, flexBasis: '48%', minWidth: 280 },
+  buttonContent: { minHeight: SPACING.touch },
+  add: { marginTop: SPACING.xs, alignSelf: 'flex-start' },
 });

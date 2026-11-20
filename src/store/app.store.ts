@@ -4,9 +4,10 @@ import { mmkvStorage } from '@/src/storage/adapter';
 import { CURRENT_SCHEMA_VERSION, migratePersistedState } from '@/src/storage/migrations';
 import { createRulesForMotorcycle } from '@/src/data/maintenance/templates';
 import { deleteRemindersWithIntegrations, updateReminderWithIntegrations } from '@/src/services/reminder-coordinator';
+import { cancelOilReminder, cancelOilReminders } from '@/src/services/oil-reminder-notifications';
 import { removeMotorcyclePhoto } from '@/src/services/motorcycle-photo';
 import { isBeforeToday } from '@/src/domain/date';
-import type { MaintenanceLog, MaintenanceRule, Motorcycle, OdometerLog, Reminder, ThemeMode, UserPreferences } from '@/src/domain/types';
+import type { MaintenanceLog, MaintenanceRule, Motorcycle, OdometerLog, OilReminderPreference, Reminder, ThemeMode, UserPreferences } from '@/src/domain/types';
 
 interface AppState {
   schemaVersion: number;
@@ -30,11 +31,18 @@ interface AppState {
   deleteReminder: (id: string) => void;
   setThemeMode: (themeMode: ThemeMode) => void;
   setUseMotorcycleAccent: (value: boolean) => void;
+  setOilReminderEnabled: (ruleId: string, enabled: boolean) => Promise<void>;
+  updateOilReminderPreference: (ruleId: string, preference?: OilReminderPreference) => void;
   resetData: () => Promise<void>;
 }
 
-const initialPreferences: UserPreferences = { themeMode: 'system', useMotorcycleAccent: true };
+const initialPreferences: UserPreferences = { themeMode: 'system', useMotorcycleAccent: true, oilReminders: {} };
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+function withoutOilReminders(preferences: UserPreferences, ruleIds: readonly string[]): UserPreferences {
+  const removed = new Set(ruleIds);
+  return { ...preferences, oilReminders: Object.fromEntries(Object.entries(preferences.oilReminders).filter(([ruleId]) => !removed.has(ruleId))) };
+}
 
 export const useAppStore = create<AppState>()(persist((set, get) => ({
   schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -62,7 +70,19 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
     return { motorcycles: state.motorcycles.map((item) => item.id === id ? { ...item, ...changes, updatedAt: new Date().toISOString() } : item) };
   }),
   deleteMotorcycle: async (id) => {
-    await deleteRemindersWithIntegrations(get().reminders.filter((reminder) => reminder.motorcycleId === id));
+    const oilRuleIds = get().maintenanceRules.filter((rule) => rule.motorcycleId === id && rule.type === 'engine-oil').map((rule) => rule.id);
+    const oilReminders: Record<string, OilReminderPreference> = Object.fromEntries(oilRuleIds.flatMap((ruleId) => {
+      const preference = get().preferences.oilReminders[ruleId];
+      return preference ? [[ruleId, preference]] : [];
+    }));
+    set((state) => ({ preferences: { ...state.preferences, oilReminders: { ...state.preferences.oilReminders, ...Object.fromEntries(Object.entries(oilReminders).map(([ruleId, preference]) => [ruleId, { ...preference, enabled: false }])) } } }));
+    try {
+      await cancelOilReminders(oilRuleIds);
+      await deleteRemindersWithIntegrations(get().reminders.filter((reminder) => reminder.motorcycleId === id));
+    } catch (error) {
+      set((state) => ({ preferences: { ...state.preferences, oilReminders: { ...state.preferences.oilReminders, ...oilReminders } } }));
+      throw error;
+    }
     removeMotorcyclePhoto(get().motorcycles.find((motorcycle) => motorcycle.id === id)?.photoUri);
     set((state) => {
     const motorcycles = state.motorcycles.filter((motorcycle) => motorcycle.id !== id);
@@ -73,6 +93,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
       maintenanceRules: state.maintenanceRules.filter((rule) => rule.motorcycleId !== id),
       maintenanceLogs: state.maintenanceLogs.filter((log) => log.motorcycleId !== id),
       reminders: state.reminders.filter((reminder) => reminder.motorcycleId !== id),
+      preferences: withoutOilReminders(state.preferences, oilRuleIds),
     };
     });
   },
@@ -121,8 +142,44 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   deleteReminder: (id) => set((state) => ({ reminders: state.reminders.filter((reminder) => reminder.id !== id) })),
   setThemeMode: (themeMode) => set((state) => ({ preferences: { ...state.preferences, themeMode } })),
   setUseMotorcycleAccent: (value) => set((state) => ({ preferences: { ...state.preferences, useMotorcycleAccent: value } })),
+  setOilReminderEnabled: async (ruleId, enabled) => {
+    if (enabled) {
+      set((state) => ({ preferences: { ...state.preferences, oilReminders: { ...state.preferences.oilReminders, [ruleId]: { enabled: true } } } }));
+      return;
+    }
+    const previous = get().preferences.oilReminders[ruleId];
+    if (previous) set((state) => ({ preferences: { ...state.preferences, oilReminders: { ...state.preferences.oilReminders, [ruleId]: { ...previous, enabled: false } } } }));
+    try {
+      await cancelOilReminder(ruleId);
+    } catch (error) {
+      if (previous) set((state) => ({ preferences: { ...state.preferences, oilReminders: { ...state.preferences.oilReminders, [ruleId]: previous } } }));
+      throw error;
+    }
+    set((state) => ({
+      preferences: {
+        ...state.preferences,
+        oilReminders: Object.fromEntries(Object.entries(state.preferences.oilReminders).filter(([id]) => id !== ruleId)),
+      },
+    }));
+  },
+  updateOilReminderPreference: (ruleId, preference) => set((state) => {
+    const current = state.preferences.oilReminders[ruleId];
+    if (JSON.stringify(current) === JSON.stringify(preference)) return state;
+    const oilReminders = { ...state.preferences.oilReminders };
+    if (preference) oilReminders[ruleId] = preference;
+    else delete oilReminders[ruleId];
+    return { preferences: { ...state.preferences, oilReminders } };
+  }),
   resetData: async () => {
-    await deleteRemindersWithIntegrations(get().reminders);
+    const oilReminders = get().preferences.oilReminders;
+    set((state) => ({ preferences: { ...state.preferences, oilReminders: Object.fromEntries(Object.entries(oilReminders).map(([ruleId, preference]) => [ruleId, { ...preference, enabled: false }])) } }));
+    try {
+      await cancelOilReminders(Object.keys(oilReminders));
+      await deleteRemindersWithIntegrations(get().reminders);
+    } catch (error) {
+      set((state) => ({ preferences: { ...state.preferences, oilReminders } }));
+      throw error;
+    }
     get().motorcycles.forEach((motorcycle) => removeMotorcyclePhoto(motorcycle.photoUri));
     set({ schemaVersion: CURRENT_SCHEMA_VERSION, motorcycles: [], activeMotorcycleId: undefined, odometerLogs: [], maintenanceRules: [], maintenanceLogs: [], reminders: [], preferences: initialPreferences });
   },
