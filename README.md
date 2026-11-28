@@ -9,8 +9,8 @@ Motor Care adalah aplikasi mobile personal untuk membantu pemilik motor memantau
 - Bahasa UI: Bahasa Indonesia terlebih dahulu, siap dilokalkan
 - Tema: permukaan off-white/ink dengan default teal dan aksen dinamis per motor
 - Penyimpanan: lokal di perangkat
-- Backend: tidak ada
-- Login dan akun: tidak ada
+- Backend: API terpisah dipakai untuk akun dan salinan motor yang dikonfirmasi; data utama tetap lokal
+- Login dan akun: register/login tersedia, refresh token native disimpan di Expo SecureStore
 - Fokus: sederhana, tenang, action-oriented, dan transparan mengenai sumber rekomendasi
 
 ## Fitur MVP
@@ -48,6 +48,7 @@ Motor Care adalah aplikasi mobile personal untuk membantu pemilik motor memantau
 
 - Home dashboard dengan motor aktif, odometer, status maintenance, aksi cepat, dan aktivitas terbaru
 - Bottom navigation: Home, Garage, Perawatan, Pengaturan
+- Pengaturan > Akun membuka ringkasan akun yang ringkas. Setelah masuk, pilih **Garasi bersama** untuk undangan/laporan atau **Salin dari Garasi** untuk unggahan lokal yang dikonfirmasi; panel yang tidak dibuka tidak dimuat.
 - Light mode dan dark mode
 - Layout responsif, highlight tonal pada motor aktif dan status perawatan, serta transisi tab yang mengikuti preferensi reduced motion
 - Empty state dan feedback untuk alur penting
@@ -140,7 +141,7 @@ Untuk simulator pertama kali, buka Xcode dan pasang runtime iOS. Untuk perangkat
 
 ## Build APK dan iOS via EAS Cloud
 
-`eas.json` menyediakan tiga profil: `preview` untuk pengujian internal, `simulator` untuk iOS Simulator, dan `production` untuk distribusi store. Konfigurasi saat ini sudah memiliki `extra.eas.projectId` dan owner Expo. Gunakan akun yang memiliki akses ke proyek tersebut.
+`eas.json` menyediakan tiga profil: `preview` untuk pengujian internal, `simulator` untuk iOS Simulator, dan `production` untuk distribusi store. Profil `preview` memilih EAS environment bernama `preview` secara eksplisit. Konfigurasi saat ini sudah memiliki `extra.eas.projectId` dan owner Expo. Gunakan akun yang memiliki akses ke proyek tersebut.
 
 Login dan periksa proyek yang terhubung:
 
@@ -149,13 +150,39 @@ bunx eas-cli@latest login
 bunx eas-cli@latest project:info
 ```
 
+API preview harus sudah tersedia melalui HTTPS sebelum build. Base URL harus berupa origin publik ditambah prefix API `/api/v1`, tanpa `localhost`, misalnya `https://<api-domain>/api/v1`. `localhost` pada APK menunjuk ke HP itu sendiri. Simpan URL nonrahasia tersebut di EAS environment `preview`:
+
+```sh
+bunx eas-cli@latest env:set preview \
+  --name EXPO_PUBLIC_API_BASE_URL \
+  --value https://<api-domain>/api/v1 \
+  --visibility plaintext \
+  --scope project
+```
+
+Jangan simpan `DATABASE_URL`, secret JWT, password database, access token, atau refresh token di EAS/Expo bundle. Variabel berprefix `EXPO_PUBLIC_` terlihat oleh siapa pun yang memeriksa APK. Perubahan environment memerlukan build baru.
+
+Aplikasi membaca `EXPO_PUBLIC_API_BASE_URL` saat build. API client menolak HTTP selain host development lokal, menyimpan refresh token native di Expo SecureStore, dan menyimpan access token hanya di memori. Fitur akun menyalin nama panggilan serta odometer motor lokal hanya setelah konfirmasi; ini bukan sinkronisasi dua arah dan tidak mengunggah riwayat, pengingat, atau foto.
+
 Build APK Android yang bisa dipasang tanpa Metro:
 
-```sh\
+```sh
 bunx eas-cli@latest build --platform android --profile preview
 ```
 
 Unduh APK dari link hasil build. Pasang di Android dengan izin instalasi aplikasi dari sumber tersebut, atau `adb install -r /path/to/app.apk`. EAS akan meminta konfigurasi signing/keystore; simpan credential dengan aman, jangan commit.
+
+### Smoke dua perangkat Android
+
+Gunakan dua HP fisik pada jaringan yang berbeda jika tersedia, misalnya HP A melalui Wi-Fi dan HP B melalui data seluler.
+
+1. Pada browser masing-masing HP, buka `https://<api-domain>/api/v1/health/ready`. Kedua perangkat harus menerima HTTPS valid dan JSON `{"status":"ok"}`. Jangan lanjut jika sertifikat bermasalah, URL memakai HTTP, atau host tidak dapat dicapai.
+2. Instal artefak APK preview yang **sama** pada kedua HP dan buka sampai Home tampil tanpa Metro. Di HP A buat satu motor lokal, lalu buka **Pengaturan > Akun**, register memakai email uji unik dan password uji minimal 12 karakter, buka **Salin dari Garasi**, tinjau motor tersebut, dan konfirmasi unggahan.
+3. Di HP B buka **Pengaturan > Akun**, login ke akun uji yang sama, buka **Salin dari Garasi**, dan pastikan motor dari HP A tampil pada daftar **Motor di akun**. Buat motor lokal berbeda di HP B, unggah setelah konfirmasi, lalu buka ulang submenu yang sama di HP A dan pastikan kedua motor akun tampil.
+4. Logout HP A. Pastikan Garasi lokal HP A tetap ada, lalu buka ulang layar Akun di HP B dan pastikan sesi serta daftar akunnya tetap aktif. Ini memeriksa bahwa logout satu device tidak mencabut device lain.
+5. Catat versi Android, model perangkat, jaringan, URL build EAS, waktu pengujian, dan hasil tanpa mencatat email/password uji, access token, refresh token, atau secret. Hapus akun/data uji melalui prosedur operator setelah smoke karena UI penghapusan akun belum tersedia.
+
+Langkah ini memverifikasi jangkauan HTTPS, register/login dua sesi perangkat, unggah yang dikonfirmasi, list akun, pemisahan Garasi lokal, dan logout per-device. Ini tetap bukan bukti sinkronisasi penuh: edit lokal setelah unggah, riwayat perawatan, pengingat, dan foto tidak disinkronkan.
 
 Build iOS untuk perangkat fisik terdaftar:
 
@@ -219,6 +246,35 @@ Konfigurasi Expo memakai `expo-splash-screen`. Aset launcher/splash juga sudah d
 - Menyelesaikan perawatan berbasis hari menjadwalkan ulang reminder satu kali yang terkait dan belum selesai. Reminder berulang mempertahankan jadwalnya; tanggal servis berbasis kilometer tidak ditebak.
 - Mengetuk notifikasi membuka konteks yang masih tersimpan dan memilih motor terkait. Notifikasi untuk reminder yang sudah dihapus diabaikan.
 
+## Push laporan garasi bersama
+
+Saat akun aktif, aplikasi meminta izin notifikasi, mengambil token native perangkat, lalu menukarnya melalui `getExpoPushTokenAsync({ projectId, devicePushToken })`. Hanya token `ExpoPushToken[...]`/`ExponentPushToken[...]` yang dikirim ke `POST /push-devices` melalui sesi terautentikasi. Token Expo didaftarkan ulang saat akun berganti atau token native berotasi, dan backend mengirim melalui Expo Push Service.
+
+Payload data untuk laporan bersama harus tepat berbentuk:
+
+```json
+{ "motorcycleId": "<uuid>", "reportId": "<uuid>" }
+```
+
+Ketukan notifikasi foreground/background dan cold start ditangani oleh observer root yang sama. Payload tidak memberi akses: aplikasi menunggu pemulihan sesi, memuat ulang `GET /motorcycles`, dan hanya membuka `/shared/<motorcycleId>?reportId=<reportId>` jika motor masih tersedia untuk akun aktif. Login akun lain akan mengulang pemeriksaan. Garasi lokal tidak dibaca, diunggah, atau diubah oleh alur ini.
+
+### Android / Expo Push Service
+
+1. Buat aplikasi Android di Firebase dengan package `com.motorcare.app`.
+2. Unduh `google-services.json` untuk aplikasi tersebut dan simpan di lokasi lokal yang tidak membocorkan credential lintas environment. Tambahkan `expo.android.googleServicesFile` di `app.json` hanya setelah file tersedia untuk proses build.
+3. Konfigurasikan credential FCM HTTP v1 pada EAS Credentials agar Expo Push Service dapat meneruskan notifikasi ke Android. Service-account private key tidak disimpan di repository atau variabel `EXPO_PUBLIC_*`.
+4. Backend mengirim ke Expo Push Service memakai token Expo dari `/push-devices`. Payload Android memakai channel ID `shared-reports`, yang dibuat aplikasi sebelum meminta izin Android 13+.
+5. Jalankan prebuild secara sengaja bila konfigurasi plugin berubah, tinjau diff native, lalu buat development build baru. Remote push Android tidak berjalan di Expo Go pada SDK 54.
+
+### iOS / Expo Push Service
+
+1. Aktifkan capability **Push Notifications** untuk App ID `com.motorcare.app` di Apple Developer. Project saat ini sudah memiliki entitlement `aps-environment` untuk development; signing distribution menghasilkan entitlement environment yang sesuai profil.
+2. Buat APNs Auth Key (`.p8`) atau certificate dan simpan melalui EAS Credentials agar Expo Push Service dapat meneruskan notifikasi ke iOS.
+3. Backend mengirim ke Expo Push Service memakai token Expo dari `/push-devices`. Uji development dan production secara terpisah karena environment APNs tetap berbeda.
+4. Pasang ulang development build pada perangkat fisik setelah capability atau credential native berubah. Simulator/preview web tidak menjadi bukti pengiriman remote push produksi.
+
+Tidak ada build cloud, upload credential, atau pengiriman push nyata yang dijalankan oleh repository setup ini. Verifikasi akhir memerlukan perangkat fisik, credential push EAS yang dikonfigurasi, backend Expo Push Service, dan dua akun uji untuk memastikan token berpindah akun tanpa membuka laporan yang tidak lagi diizinkan.
+
 ## Preview di Web
 
 Web hanya digunakan untuk mengecek layout dan alur UI. Jalankan:
@@ -264,6 +320,8 @@ bunx expo export --platform all
 ```text
 app/                    # Routes Expo Router
   (tabs)/               # Home, Garage, Perawatan, Pengaturan
+  account.tsx           # Akun dan submenu garasi bersama/impor lokal
+  shared/               # Detail motor dan laporan garasi bersama
   motorcycle/           # Alur profil motor
   maintenance/          # Detail dan custom maintenance
   reminder/             # Create dan edit reminder
@@ -282,11 +340,11 @@ tests/                  # Unit test domain dan migration
 
 Fitur berikut memang tidak termasuk dalam scope:
 
-- backend, REST API, database, atau cloud sync
-- autentikasi dan registrasi
-- remote push notification
+- sinkronisasi dua arah penuh; akun hanya menerima salinan motor yang dikonfirmasi
+- penghapusan akun, reset password, dan verifikasi email
+- pengelolaan perangkat push dari UI; registrasi native berjalan otomatis setelah login
 - marketplace atau booking bengkel
 - GPS, OBD, Bluetooth, dan deteksi odometer otomatis
-- fuel tracking
+- pelacakan konsumsi BBM penuh; laporan bersama hanya menyimpan indikator bensin saat itu
 - diagnosis atau assistant AI
 - komunitas, chat, dan pembayaran

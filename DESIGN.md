@@ -2,7 +2,7 @@
 
 ## 0. Revamp inputs & decisions
 
-- Existing architecture stays intact: Expo Router, React Native Paper, MaterialCommunityIcons, Zustand, dynamic motorcycle accent, and the current store/service flows.
+- Existing local architecture stays intact: Expo Router, React Native Paper, MaterialCommunityIcons, Zustand, dynamic motorcycle accent, and the current garage store/service flows. Optional account access and explicit local-to-account import sit beside that store and never replace or mutate it.
 - UI/UX Pro Max queries run: `motorcycle maintenance dashboard clean lightweight Indonesian` and the narrower `personal motorcycle care off-white ink teal` design-system query, plus `responsive maintenance dashboard accessibility touch targets --stack react-native`. Adopted: minimal/Swiss hierarchy, semantic Pressables, visible states, reduced motion, responsive reflow, and 48px targets. Rejected: new web fonts, marketing-page sections, dark-only/OLED direction, decorative charts, and extra red/green brand accents.
 - StyleGallery pattern: [`main-with-rail`](https://github.com/changeroa/StyleGallery/blob/main/patterns/split-sidebar/main-with-rail.md) for the wide dashboard. The primary task remains first in reading order, the rail reflows below it, and `Screen` remains the only page scroll owner.
 - Visual direction: warm workshop paper rather than cold dashboard chrome. Off-white canvas, near-black green ink, quiet mineral surfaces, and one accent: the active motorcycle color with restrained teal fallback.
@@ -159,6 +159,29 @@ The base unit is **4px**. Shared values live in `src/theme/theme.ts` as `SPACING
 - **Accessibility**: modal view, escape dismissal, labelled close control, focusable contents.
 - **Keyboard**: iOS uses padding avoidance; Android uses the activity's resize mode so the scrollable sheet and its actions remain above the keyboard without double-resizing.
 
+### Account and local import
+- **Structure**: settings entry -> account route -> signed-out authentication form or signed-in compact account summary -> two large submenu entries for `Garasi bersama` and `Salin dari Garasi`. The focused submenu is selected by the deep-linkable `panel` route parameter and returns to the account overview through an explicit 48px back action. `Screen` remains the only page scroll owner.
+- **Mounting**: shared-garage and local-import panels are mutually exclusive and mount only while their submenu is open. Their focus/app-state fetch effects therefore do not run from the account overview.
+- **Navigation pattern**: the overview uses StyleGallery's [`step-nav`](https://github.com/changeroa/StyleGallery/blob/main/patterns/stacking/step-nav.md) as a semantic vertical action stack with no nested scroll owner. Each entry is one accessible button with a 48px icon well, title, concise explanation, and trailing chevron.
+- **Account identity**: the active email is exposed in full to accessibility services but truncates in the middle on narrow visual layouts so long addresses never force horizontal overflow.
+- **Authentication states**: restoring, unavailable, signed out, submitting, and signed in. Email and password keep visible labels, allow paste/password managers, retain inline errors, and never block the local app while signed out.
+- **Import confirmation**: every upload attempt opens one confirmation that names the destination email, explains exactly which fields leave the device, states that the local garage is unchanged, and offers `Nanti` beside the upload action.
+- **Import states**: ready, invalid local item, importing, imported, failed, and already imported for this account. Successful local IDs are remembered per account; retry submits failed items only and never repeats a recorded success.
+- **Copy**: the required disclosure is explicit: only the selected motorcycle name and current odometer are uploaded; maintenance history, reminders, photos, and other local data remain on the device.
+- **Security**: native refresh credentials use platform secure storage and access credentials stay in memory. Web preview credentials stay in memory only and disappear on reload.
+
+### Shared garage and reports
+- **Structure**: account status -> pending invitations -> shared motorcycle list -> authenticated motorcycle detail -> newest condition reports. `Screen` is the only page scroll owner; condition entry uses the existing bounded `Sheet`.
+- **Separation**: shared motorcycles always come from the authenticated `GET /motorcycles` response and stay in component memory. They never enter the local Zustand garage, change the active local motorcycle, or trigger a private-garage upload.
+- **Invitation states**: loading, empty, pending, accepting, accepted, and failed. Each invitation names the motorcycle and keeps a 48px acceptance action beside explanatory copy.
+- **Shared motorcycle cards**: use the standard surface recipe, motorcycle name, odometer, and current member role. The card is one accessible button; ownership is communicated with text and icon, not color alone.
+- **Detail states**: authorizing, loading, ready, unavailable, and unauthorized. Detail access first re-fetches the current account motorcycle list; report history is requested only after the selected motorcycle is present.
+- **Report history**: newest reports appear first with author, localized timestamp, odometer, fuel bars out of six, and optional note. A report opened from a notification uses `primaryContainer` plus a visible “Dari notifikasi” label, never a colored border.
+- **Condition entry**: odometer is a localized integer field, fuel is a seven-option radio group from 0-6, and note is a labelled multiline field. Inline errors are announced; saving disables repeated submission and refreshes remote history without mutating local garage data.
+- **Owner invitation**: `GET /motorcycles` returns exactly the authenticated account's membership role; the email form is shown only when that role is `OWNER`. Success and failure are announced next to the form.
+- **Refresh**: invitation/list screens and detail history refresh on focus and when the app returns to the foreground. User actions that change remote data refresh only the relevant remote surface.
+- **Notification entry**: foreground, background-tap, and cold-start payloads carry only `motorcycleId` and `reportId`. Navigation waits for session restoration, re-fetches `GET /motorcycles` for the current account, and discards unauthorized or stale-account results before opening the highlighted report.
+
 ## 6. Motion & Interaction
 
 | Token | Duration | Usage |
@@ -192,6 +215,9 @@ Strategy: **warm tonal layering plus restrained depth**. Cards use a 1px `outlin
 - System reduced-motion preference is respected for screen, card, sheet, and tab transitions.
 - Copy must not imply a schedule is healthy until a real completion date or odometer baseline exists.
 - Indonesian copy uses short active sentences, avoids jargon where a plain term exists, and never claims a generic 3D preview is an exact motorcycle model.
+- Account access remains optional for the local app. Import requires explicit confirmation, visibly names the destination account, preserves local records, and reports each invalid or failed motorcycle without hiding successful items.
+- Shared invitations, reports, and push registration require a signed-in account; denial or session expiry never blocks the private offline garage.
+- Remote notification payload IDs are navigation hints only. Current-session API authorization is the source of truth before any shared detail is shown.
 
 ### Accepted Debt
 
