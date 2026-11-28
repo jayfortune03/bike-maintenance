@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppState, Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, Dialog, Portal, Switch, Text, TouchableRipple, useTheme } from 'react-native-paper';
+import { useRouter } from 'expo-router';
 import { Screen } from '@/src/components/Screen';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { SectionTitle } from '@/src/components/SectionTitle';
@@ -16,6 +17,7 @@ const themeModes = [
 ] as const;
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const wide = width >= LAYOUT.wideBreakpoint;
@@ -118,11 +120,21 @@ export default function SettingsScreen() {
               <View style={[styles.rowIcon, { backgroundColor: theme.colors.surfaceVariant }]}><MaterialCommunityIcons name="shield-lock-outline" size={22} color={theme.colors.onSurfaceVariant} /></View>
               <View style={styles.copy}>
                 <Text variant="titleSmall">Privasi lokal</Text>
-                <Text variant="bodyMedium" style={[muted, styles.detail]}>Data tersimpan di perangkat ini, tanpa akun dan tanpa server.</Text>
+                <Text variant="bodyMedium" style={[muted, styles.detail]}>Garasi tetap tersimpan di perangkat. Tidak ada data yang dikirim tanpa konfirmasi Anda.</Text>
               </View>
             </View>
           </View>
         </View>
+      </View>
+
+      <SectionTitle description="Opsional: akses motor bersama atau salin motor pilihan.">Akun</SectionTitle>
+      <View style={[surface, styles.dataCard]}>
+        <View style={[styles.rowIcon, { backgroundColor: theme.colors.primaryContainer }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><MaterialCommunityIcons name="account-circle-outline" size={22} color={theme.colors.onPrimaryContainer} /></View>
+        <View style={styles.copy}>
+          <Text variant="titleMedium">Akun & garasi bersama</Text>
+          <Text variant="bodyMedium" style={[muted, styles.detail]}>Masuk untuk memilih garasi bersama atau salinan motor lokal.</Text>
+        </View>
+        <Button mode="contained" icon="arrow-right" onPress={() => router.push('/account')} contentStyle={styles.button}>Buka akun</Button>
       </View>
 
       <SectionTitle description="Tindakan ini menghapus seluruh catatan dari perangkat.">Data aplikasi</SectionTitle>
@@ -134,7 +146,7 @@ export default function SettingsScreen() {
         <Button mode="outlined" textColor={theme.colors.error} onPress={() => setResetVisible(true)} contentStyle={styles.button}>Reset data aplikasi</Button>
       </View>
 
-      <Text variant="bodySmall" style={[styles.about, muted]}>Motor Care membantu kamu merawat motor tanpa mengirim data ke server.</Text>
+      <Text variant="bodySmall" style={[styles.about, muted]}>Motor Care menyimpan Garasi di perangkat. Salinan ke akun selalu opsional dan memerlukan konfirmasi.</Text>
 
       <Portal>
         <Dialog visible={resetVisible} onDismiss={() => { if (!resetting) setResetVisible(false); }} style={styles.dialog}>
