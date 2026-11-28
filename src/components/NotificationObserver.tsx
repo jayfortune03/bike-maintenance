@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
+import * as z from 'zod';
 import { AppState, Platform } from 'react-native';
 import { useRootNavigationState, useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { notificationTarget } from '@/src/domain/notification-target';
+import { authorizeSharedNotification, parseSharedNotification, type SharedNotificationTarget } from '@/src/domain/shared-notification';
 import { useAppStore } from '@/src/store/app.store';
 import { reconcileOilReminder } from '@/src/services/oil-reminder-notifications';
+import { useAuthSnapshot } from '@/src/auth/AuthProvider';
+import { ApiClientError, SessionExpiredError, StaleSessionError } from '@/src/auth/errors';
+import { accountApi, authSession } from '@/src/auth/runtime';
 
 export function NotificationObserver() {
   const router = useRouter();
   const root = useRootNavigationState();
+  const session = useAuthSnapshot();
   const handled = useRef<string | null>(null);
+  const [pendingShared, setPendingShared] = useState<SharedNotificationTarget>();
   const motorcycles = useAppStore((state) => state.motorcycles);
   const maintenanceRules = useAppStore((state) => state.maintenanceRules);
   const oilReminders = useAppStore((state) => state.preferences.oilReminders);
@@ -75,12 +82,43 @@ export function NotificationObserver() {
         if (target.motorcycleId) state.setActiveMotorcycle(target.motorcycleId);
         if (target.ruleId) router.push({ pathname: '/maintenance/[id]', params: { id: target.ruleId } });
         else router.push({ pathname: '/reminder/edit', params: { id: target.reminderId } });
+        void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
+        return;
       }
-      void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
+      const shared = parseSharedNotification(response.notification.request.content.data);
+      if (shared) setPendingShared(shared);
+      else void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
     };
     const listener = Notifications.addNotificationResponseReceivedListener(respond);
     void Notifications.getLastNotificationResponseAsync().then(respond).catch(() => undefined);
     return () => { active = false; listener.remove(); Notifications.setNotificationHandler(null); };
   }, [root?.key, router]);
+  useEffect(() => {
+    if (!pendingShared || !root?.key) return;
+    if (session.status === 'signed-out' || session.status === 'unavailable') {
+      router.push({ pathname: '/account', params: { notification: 'shared-login' } });
+      return;
+    }
+    if (session.status !== 'signed-in') return;
+    const accountId = session.user.id;
+    let active = true;
+    const authorize = async () => {
+      try {
+        const motorcycles = await accountApi.listMotorcycles();
+        if (!active || authSession.accountId !== accountId) return;
+        const target = authorizeSharedNotification(pendingShared, motorcycles);
+        setPendingShared(undefined);
+        await Notifications.clearLastNotificationResponseAsync();
+        if (target) router.push({ pathname: '/shared/[id]', params: { id: target.motorcycleId, reportId: target.reportId } });
+        else router.replace({ pathname: '/account', params: { notification: 'unauthorized' } });
+      } catch (error) {
+        if (!active || error instanceof StaleSessionError || error instanceof SessionExpiredError) return;
+        if (error instanceof ApiClientError || error instanceof z.ZodError) router.push({ pathname: '/account', params: { notification: 'retry' } });
+        else throw error;
+      }
+    };
+    void authorize();
+    return () => { active = false; };
+  }, [pendingShared, refreshToken, root?.key, router, session]);
   return null;
 }

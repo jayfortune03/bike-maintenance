@@ -6,6 +6,8 @@ import { useAppStore, selectActiveMotorcycle } from '@/src/store/app.store';
 import { getAppTheme } from '@/src/theme/theme';
 import { useReducedMotion } from 'react-native-reanimated';
 import { NotificationObserver } from '@/src/components/NotificationObserver';
+import { RemotePushRegistration } from '@/src/components/RemotePushRegistration';
+import { AuthProvider } from '@/src/auth/AuthProvider';
 
 export default function RootLayout() {
   const reducedMotion = useReducedMotion();
@@ -16,9 +18,12 @@ export default function RootLayout() {
 
   return (
     <PaperProvider theme={theme}>
-      <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, animation: reducedMotion ? 'none' : 'slide_from_right', contentStyle: { backgroundColor: theme.colors.background } }} />
-      <NotificationObserver />
+      <AuthProvider>
+        <StatusBar style={theme.dark ? 'light' : 'dark'} />
+        <Stack screenOptions={{ headerShown: false, animation: reducedMotion ? 'none' : 'slide_from_right', contentStyle: { backgroundColor: theme.colors.background } }} />
+        <NotificationObserver />
+        <RemotePushRegistration />
+      </AuthProvider>
     </PaperProvider>
   );
 }
