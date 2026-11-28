@@ -36,7 +36,8 @@
             "backgroundColor": "#0D131D"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "android": {
       "package": "com.motorcare.app",
